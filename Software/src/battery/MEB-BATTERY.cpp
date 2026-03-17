@@ -16,52 +16,52 @@ TODO list
 - remaining_capacity_Wh is based on a lower limit of 5% soc. This means that at 5% soc, remaining_capacity_Wh returns 0.
 */
 
-const int RX_0x17F0007B = 0x0001;
-const int RX_0x12DD54D0 = 0x0002;
-const int RX_0x12DD54D1 = 0x0004;
-const int RX_0x12DD54D2 = 0x0008;
-const int RX_0x1A555550 = 0x0010;
-const int RX_0x1A555551 = 0x0020;
-const int RX_0x1A5555B2 = 0x0040;
-const int RX_0x16A954A6 = 0x0080;
-const int RX_0x1A5555B0 = 0x0100;
-const int RX_0x1A5555B1 = 0x0200;
-const int RX_0x5A2 = 0x0400;
-const int RX_0x5CA = 0x0800;
-const int RX_0x0CF = 0x1000;
+const int RX_KN_Hybrid_01 = 0x0001;
+const int RX_BMS_21 = 0x0002;
+const int RX_BMS_22 = 0x0004;
+const int RX_BMS_23 = 0x0008;
+const int RX_BMS_24 = 0x0010;
+const int RX_BMS_25 = 0x0020;
+const int RX_BMS_31 = 0x0040;
+const int RX_BMS_11 = 0x0080;
+const int RX_BMS_26 = 0x0100;
+const int RX_BMS_28 = 0x0200;
+const int RX_BMS_04 = 0x0400;
+const int RX_BMS_07 = 0x0800;
+const int RX_BMS_20 = 0x1000;
 const int RX_DEFAULT = 0xE000;
 
 // VAG PDU constants tables
 static const uint8_t Airbag_01_PDU_CONST[16] = {0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40,
-                                               0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40};
+                                                0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40};
 static const uint8_t EM1_01_PDU_CONST[16] = {0x2f, 0x44, 0x72, 0xd3, 0x07, 0xf2, 0x39, 0x09,
-                                               0x8d, 0x6f, 0x57, 0x20, 0x37, 0xf9, 0x9b, 0xfa};
+                                             0x8d, 0x6f, 0x57, 0x20, 0x37, 0xf9, 0x9b, 0xfa};
 static const uint8_t BMS_20_PDU_CONST[16] = {0xee, 0x80, 0x6e, 0x4e, 0x29, 0xc6, 0x92, 0xc0,
-                                               0x65, 0xaa, 0x3a, 0xa1, 0x8f, 0xcd, 0xe6, 0x90};
+                                             0x65, 0xaa, 0x3a, 0xa1, 0x8f, 0xcd, 0xe6, 0x90};
 static const uint8_t ESC_51_Auth_PDU_CONST[16] = {0x77, 0x5c, 0xa0, 0x89, 0x4b, 0x7c, 0xbb, 0xd6,
                                                   0x1f, 0x6c, 0x4f, 0xf6, 0x20, 0x2b, 0x43, 0xdd};
 static const uint8_t ESP_21_PDU_CONST[16] = {0xb4, 0xef, 0xf8, 0x49, 0x1e, 0xe5, 0xc2, 0xc0,
-                                              0x97, 0x19, 0x3c, 0xc9, 0xf1, 0x98, 0xd6, 0x61};
-static const uint8_t MSG_0097_PDU_CONST[16] = {0x3C, 0x54, 0xCF, 0xA3, 0x81, 0x93, 0x0B, 0xC7,
-                                               0x3E, 0xDF, 0x1C, 0xB0, 0xA7, 0x25, 0xD3, 0xD8};
+                                             0x97, 0x19, 0x3c, 0xc9, 0xf1, 0x98, 0xd6, 0x61};
+static const uint8_t BMS_HYB_02_PDU_CONST[16] = {0x3C, 0x54, 0xCF, 0xA3, 0x81, 0x93, 0x0B, 0xC7,
+                                                 0x3E, 0xDF, 0x1C, 0xB0, 0xA7, 0x25, 0xD3, 0xD8};
 static const uint8_t DCDC_04_PDU_CONST[16] = {0x5F, 0xA0, 0x44, 0xD0, 0x63, 0x59, 0x5B, 0xA2,
-                                               0x68, 0x04, 0x90, 0x87, 0x52, 0x12, 0xB4, 0x9E};
-static const uint8_t MSG_0124_PDU_CONST[16] = {0x12, 0x7E, 0x34, 0x16, 0x25, 0x8F, 0x8E, 0x35,
-                                               0xBA, 0x7F, 0xEA, 0x59, 0x4C, 0xF0, 0x88, 0x15};
+                                              0x68, 0x04, 0x90, 0x87, 0x52, 0x12, 0xB4, 0x9E};
+static const uint8_t BMS_HYB_04_PDU_CONST[16] = {0x12, 0x7E, 0x34, 0x16, 0x25, 0x8F, 0x8E, 0x35,
+                                                 0xBA, 0x7F, 0xEA, 0x59, 0x4C, 0xF0, 0x88, 0x15};
 static const uint8_t MSG_HYB_30_PDU_CONST[16] = {0x03, 0x13, 0x23, 0x7a, 0x40, 0x51, 0x68, 0xba,
                                                  0xa8, 0xbe, 0x55, 0x02, 0x11, 0x31, 0x76, 0xec};
 static const uint8_t Motor_54_PDU_CONST[16] = {0x16, 0x35, 0x59, 0x15, 0x9a, 0x2a, 0x97, 0xb8,
                                                0x0e, 0x4e, 0x30, 0xcc, 0xb3, 0x07, 0x01, 0xad};
-static const uint8_t MSG_0187_PDU_CONST[16] = {0x7F, 0xED, 0x17, 0xC2, 0x7C, 0xEB, 0x44, 0x21,
-                                               0x01, 0xFA, 0xDB, 0x15, 0x4A, 0x6B, 0x23, 0x05};
-static const uint8_t MSG_03A6_PDU_CONST[16] = {0xB6, 0x1C, 0xC1, 0x23, 0x6D, 0x8B, 0x0C, 0x51,
-                                               0x38, 0x32, 0x24, 0xA8, 0x3F, 0x3A, 0xA4, 0x02};
-static const uint8_t MSG_03AF_PDU_CONST[16] = {0x94, 0x6A, 0xB5, 0x38, 0x8A, 0xB4, 0xAB, 0x27,
-                                               0xCB, 0x22, 0x88, 0xEF, 0xA3, 0xE1, 0xD0, 0xBB};
+static const uint8_t Motor_EV_01_PDU_CONST[16] = {0x7F, 0xED, 0x17, 0xC2, 0x7C, 0xEB, 0x44, 0x21,
+                                                  0x01, 0xFA, 0xDB, 0x15, 0x4A, 0x6B, 0x23, 0x05};
+static const uint8_t MSG_HYB_01_PDU_CONST[16] = {0xB6, 0x1C, 0xC1, 0x23, 0x6D, 0x8B, 0x0C, 0x51,
+                                                 0x38, 0x32, 0x24, 0xA8, 0x3F, 0x3A, 0xA4, 0x02};
+static const uint8_t DC_HYB_02_PDU_CONST[16] = {0x94, 0x6A, 0xB5, 0x38, 0x8A, 0xB4, 0xAB, 0x27,
+                                                0xCB, 0x22, 0x88, 0xEF, 0xA3, 0xE1, 0xD0, 0xBB};
 static const uint8_t Motor_14_PDU_CONST[16] = {0x1f, 0x28, 0xc6, 0x85, 0xe6, 0xf8, 0xb0, 0x19,
                                                0x5b, 0x64, 0x35, 0x21, 0xe4, 0xf7, 0x9c, 0x24};
 static const uint8_t Klemmen_Status_01_PDU_CONST[16] = {0xc3, 0xc3, 0xc3, 0xc3, 0xc3, 0xc3, 0xc3, 0xc3,
-                                                         0xc3, 0xc3, 0xc3, 0xc3, 0xc3, 0xc3, 0xc3, 0xc3};
+                                                        0xc3, 0xc3, 0xc3, 0xc3, 0xc3, 0xc3, 0xc3, 0xc3};
 static const uint8_t HVK_01_PDU_CONST[16] = {0xed, 0xd6, 0x96, 0x63, 0xa5, 0x12, 0xd5, 0x9a,
                                              0x1e, 0x0d, 0x24, 0xcd, 0x8c, 0xa6, 0x2f, 0x41};
 static const uint8_t BMS_DC_01_PDU_CONST[16] = {0x48, 0x48, 0x48, 0x48, 0x48, 0x48, 0x48, 0x48,
@@ -71,11 +71,11 @@ static const uint8_t BMS_04_PDU_CONST[16] = {0xeb, 0x4c, 0x44, 0xaf, 0x21, 0x8d,
 static const uint8_t BMS_07_PDU_CONST[16] = {0x43, 0x43, 0x43, 0x43, 0x43, 0x43, 0x43, 0x43,
                                              0x43, 0x43, 0x43, 0x43, 0x43, 0x43, 0x43, 0x43};
 static const uint8_t Motor_Code_01_PDU_CONST[16] = {0x47, 0x47, 0x47, 0x47, 0x47, 0x47, 0x47, 0x47,
-                                                   0x47, 0x47, 0x47, 0x47, 0x47, 0x47, 0x47, 0x47};
-static const uint8_t MSG_06A3_PDU_CONST[16] = {0xC1, 0x8B, 0x38, 0xA8, 0xA4, 0x27, 0xEB, 0xC8,
-                                                0xEF, 0x05, 0x9A, 0xBB, 0x39, 0xF7, 0x80, 0xA7};
-static const uint8_t MSG_06A4_PDU_CONST[16] = {0xC7, 0xD8, 0xF1, 0xC4, 0xE3, 0x5E, 0x9A, 0xE2,
-                                                0xA1, 0xCB, 0x02, 0x4F, 0x57, 0x4E, 0x8E, 0xE4};
+                                                    0x47, 0x47, 0x47, 0x47, 0x47, 0x47, 0x47, 0x47};
+static const uint8_t BMS_HYB_06_PDU_CONST[16] = {0xC1, 0x8B, 0x38, 0xA8, 0xA4, 0x27, 0xEB, 0xC8,
+                                               0xEF, 0x05, 0x9A, 0xBB, 0x39, 0xF7, 0x80, 0xA7};
+static const uint8_t EM_HYB_05_PDU_CONST[16] = {0xC7, 0xD8, 0xF1, 0xC4, 0xE3, 0x5E, 0x9A, 0xE2,
+                                               0xA1, 0xCB, 0x02, 0x4F, 0x57, 0x4E, 0x8E, 0xE4};
 static const uint8_t BMS_11_PDU_CONST[16] = {0x79, 0xB9, 0x67, 0xAD, 0xD5, 0xF7, 0x70, 0xAA,
                                              0x44, 0x61, 0x5A, 0xDC, 0x26, 0xB4, 0xD2, 0xC3};
 
@@ -114,43 +114,43 @@ uint8_t MebBattery::vw_crc_calc(const uint8_t* inputBytes, uint8_t length, uint3
     case Airbag_01:  // Airbag (0x40)
       magicByte = Airbag_01_PDU_CONST[counter];
       break;
-    case EM1_01:  // (0xC0)
+    case EM1_01:  // Electric motor (0xC0)
       magicByte = EM1_01_PDU_CONST[counter];
       break;
-    case BMS_20:  // BMS (0xCF)
+    case BMS_20:  // BMS_20 (0xCF)
       magicByte = BMS_20_PDU_CONST[counter];
       break;
     case ESC_51_Auth: // (0xFC)
       magicByte = ESC_51_Auth_PDU_CONST[counter];
       break;
-    case ESP_21: // (0xFD)
+    case ESP_21: // ESP_21 (0xFD)
       magicByte = ESP_21_PDU_CONST[counter];
       break;
     case DCDC_04:  // DCDC (0xF7)
       magicByte = DCDC_04_PDU_CONST[counter];
       break;
-    case 0x0097:  // ?? (no named constant)
-      magicByte = MSG_0097_PDU_CONST[counter];
+    case BMS_HYB_02:  // BMS_HYB_02 (0x97)
+      magicByte = BMS_HYB_02_PDU_CONST[counter];
       break;
-    case 0x0124:  // ?? (no named constant)
-      magicByte = MSG_0124_PDU_CONST[counter];
+    case BMS_HYB_04:  // BMS_HYB_04 (0x124)
+      magicByte = BMS_HYB_04_PDU_CONST[counter];
       break;
-    case Motor_54:  // Motor (0x14C)
+    case Motor_54:  // Motor_54 (0x14C)
       magicByte = Motor_54_PDU_CONST[counter];
       break;
     case MSG_HYB_30:  // HYB30 (0x153)
       magicByte = MSG_HYB_30_PDU_CONST[counter];
       break;
-    case 0x0187:  // EV_Gearshift "Gear" selection data for EVs with no gearbox
-      magicByte = MSG_0187_PDU_CONST[counter];
+    case Motor_EV_01:  // Motor_EV_01 (0x187)
+      magicByte = Motor_EV_01_PDU_CONST[counter];
       break;
-    case 0x03A6:  // ?? (no named constant)
-      magicByte = MSG_03A6_PDU_CONST[counter];
+    case MSG_HYB_01:  // MSG_HYB_01 (0x3A6)
+      magicByte = MSG_HYB_01_PDU_CONST[counter];
       break;
-    case 0x03AF:  // ?? (no named constant)
-      magicByte = MSG_03AF_PDU_CONST[counter];
+    case DC_HYB_02:  // DC_HYB_02 (0x3AF)
+      magicByte = DC_HYB_02_PDU_CONST[counter];
       break;
-    case Motor_14:  // Motor (0x3BE)
+    case Motor_14:  // Motor_14 (0x3BE)
       magicByte = Motor_14_PDU_CONST[counter];
       break;
     case Klemmen_Status_01:  // Klemmen status (0x3C0)
@@ -171,11 +171,11 @@ uint8_t MebBattery::vw_crc_calc(const uint8_t* inputBytes, uint8_t length, uint3
     case Motor_Code_01:  // Motor (0x641)
       magicByte = Motor_Code_01_PDU_CONST[counter];
       break;
-    case 0x06A3:  // ?? (no named constant)
-      magicByte = MSG_06A3_PDU_CONST[counter];
+    case BMS_HYB_06:  // BMS_HYB_06 (0x6A3)
+      magicByte = BMS_HYB_06_PDU_CONST[counter];
       break;
-    case 0x06A4:  // ?? (no named constant)
-      magicByte = MSG_06A4_PDU_CONST[counter];
+    case EM_HYB_05:  // EM_HYB_05 (0x6A4)
+      magicByte = EM_HYB_05_PDU_CONST[counter];
       break;
     case BMS_11:
       magicByte = BMS_11_PDU_CONST[counter];
@@ -343,7 +343,7 @@ void MebBattery::handle_incoming_can_frame(CAN_frame rx_frame) {
   switch (rx_frame.ID) {
     case KN_Hybrid_01:  // BMS 500ms
       datalayer.battery.status.CAN_battery_still_alive = CAN_STILL_ALIVE;
-      can_msg_received |= RX_0x17F0007B;
+      can_msg_received |= RX_KN_Hybrid_01;
       component_protection_active = (rx_frame.data.u8[0] & 0x01);
       shutdown_active = ((rx_frame.data.u8[0] & 0x02) >> 1);
       transportation_mode_active = ((rx_frame.data.u8[0] & 0x04) >> 1);
@@ -365,7 +365,7 @@ void MebBattery::handle_incoming_can_frame(CAN_frame rx_frame) {
       break;
     case BMS_21:  // BMS Limits 100ms
       datalayer.battery.status.CAN_battery_still_alive = CAN_STILL_ALIVE;
-      can_msg_received |= RX_0x12DD54D0;
+      can_msg_received |= RX_BMS_21;
       max_discharge_power_watt =
           ((rx_frame.data.u8[6] & 0x07) << 10) | (rx_frame.data.u8[5] << 2) | (rx_frame.data.u8[4] & 0xC0) >> 6;  //*100
       max_discharge_current_amp =
@@ -375,7 +375,7 @@ void MebBattery::handle_incoming_can_frame(CAN_frame rx_frame) {
       break;
     case BMS_22:  // BMS 100ms
       datalayer.battery.status.CAN_battery_still_alive = CAN_STILL_ALIVE;
-      can_msg_received |= RX_0x12DD54D1;
+      can_msg_received |= RX_BMS_22;
       if (rx_frame.data.u8[6] != 0xFE || rx_frame.data.u8[7] != 0xFF) {  // Init state, values below invalid
         battery_SOC = ((rx_frame.data.u8[3] & 0x0F) << 7) | (rx_frame.data.u8[2] >> 1);               //*0.05
         usable_energy_amount_Wh = (rx_frame.data.u8[7] << 8) | rx_frame.data.u8[6];                   //*5
@@ -387,7 +387,7 @@ void MebBattery::handle_incoming_can_frame(CAN_frame rx_frame) {
       break;
     case BMS_23:  // BMS 100ms
       datalayer.battery.status.CAN_battery_still_alive = CAN_STILL_ALIVE;
-      can_msg_received |= RX_0x12DD54D2;
+      can_msg_received |= RX_BMS_23;
       battery_heating_active = (rx_frame.data.u8[4] & 0x40) >> 6;
       heating_request = (rx_frame.data.u8[5] & 0xE0) >> 5;
       cooling_request = (rx_frame.data.u8[5] & 0x1C) >> 2;
@@ -396,7 +396,7 @@ void MebBattery::handle_incoming_can_frame(CAN_frame rx_frame) {
       break;
     case BMS_24:  // BMS 500ms
       datalayer.battery.status.CAN_battery_still_alive = CAN_STILL_ALIVE;
-      can_msg_received |= RX_0x1A555550;
+      can_msg_received |= RX_BMS_24;
       balancing_active = (rx_frame.data.u8[1] & 0xC0) >> 6;
       charging_active = (rx_frame.data.u8[2] & 0x01);
       max_energy_Wh = ((rx_frame.data.u8[6] & 0x1F) << 8) | rx_frame.data.u8[5];                     //*40
@@ -406,7 +406,7 @@ void MebBattery::handle_incoming_can_frame(CAN_frame rx_frame) {
       break;
     case BMS_25:  // BMS 500ms
       datalayer.battery.status.CAN_battery_still_alive = CAN_STILL_ALIVE;
-      can_msg_received |= RX_0x1A555551;
+      can_msg_received |= RX_BMS_25;
       battery_heating_installed = (rx_frame.data.u8[1] & 0x20) >> 5;
       error_NT_circuit = (rx_frame.data.u8[1] & 0x40) >> 6;
       pump_1_control = rx_frame.data.u8[2] & 0x0F;         //*10, percent
@@ -420,7 +420,7 @@ void MebBattery::handle_incoming_can_frame(CAN_frame rx_frame) {
       break;
     case BMS_31:  // BMS
       datalayer.battery.status.CAN_battery_still_alive = CAN_STILL_ALIVE;
-      can_msg_received |= RX_0x1A5555B2;
+      can_msg_received |= RX_BMS_31;
       performance_index_discharge_peak_temperature_percentage =
           (((rx_frame.data.u8[3] & 0x07) << 6) | rx_frame.data.u8[2] >> 2);  //*0.2
       performance_index_charge_peak_temperature_percentage =
@@ -430,8 +430,8 @@ void MebBattery::handle_incoming_can_frame(CAN_frame rx_frame) {
       break;
     case BMS_11:  // BMS
       datalayer.battery.status.CAN_battery_still_alive = CAN_STILL_ALIVE;
-      can_msg_received |= RX_0x16A954A6;
-      BMS_16A954A6_counter = (rx_frame.data.u8[1] & 0x0F);  // Can be used to check CAN signal integrity later on
+      can_msg_received |= RX_BMS_11;
+      BMS_11_counter = (rx_frame.data.u8[1] & 0x0F);  // Can be used to check CAN signal integrity later on
       isolation_fault = (rx_frame.data.u8[2] & 0xE0) >> 5;
       isolation_status = (rx_frame.data.u8[2] & 0x1E) >> 1;
       if (isolation_fault != 0) {
@@ -640,14 +640,14 @@ void MebBattery::handle_incoming_can_frame(CAN_frame rx_frame) {
       //hybrid_01_response_fd_data (Whole frame)
       break;
     case BMS_26:  // BMS 1000ms cyclic
-      can_msg_received |= RX_0x1A5555B0;
+      can_msg_received |= RX_BMS_26;
       duration_discharge_power_watt = ((rx_frame.data.u8[6] & 0x0F) << 8) | rx_frame.data.u8[5];
       duration_charge_power_watt = (rx_frame.data.u8[7] << 4) | rx_frame.data.u8[6] >> 4;
       maximum_voltage = ((rx_frame.data.u8[3] & 0x3F) << 4) | rx_frame.data.u8[2] >> 4;
       minimum_voltage = (rx_frame.data.u8[4] << 2) | rx_frame.data.u8[3] >> 6;
       break;
     case BMS_28:  // BMS 1000ms cyclic
-      can_msg_received |= RX_0x1A5555B1;
+      can_msg_received |= RX_BMS_28;
       // All realtime_ have same enumeration, 0 = no fault, 1 = error level 1, 2 error level 2, 3 error level 3
       realtime_overcurrent_monitor = ((rx_frame.data.u8[3] & 0x01) << 2) | rx_frame.data.u8[2] >> 6;
       realtime_CAN_communication_fault = (rx_frame.data.u8[3] & 0x0E) >> 1;
@@ -675,15 +675,15 @@ void MebBattery::handle_incoming_can_frame(CAN_frame rx_frame) {
       energy_extracted_from_battery = ((rx_frame.data.u8[7] & 0x7F) << 8) | rx_frame.data.u8[6];
       break;
     case BMS_DC_01:                                        // BMS 100ms
-      BMS_578_counter = (rx_frame.data.u8[1] & 0x0F);  // Can be used to check CAN signal integrity later on
+      BMS_DC_01_counter = (rx_frame.data.u8[1] & 0x0F);  // Can be used to check CAN signal integrity later on
       BMS_Status_DCLS = ((rx_frame.data.u8[1] & 0x30) >> 4);
       DC_voltage_DCLS = (rx_frame.data.u8[2] << 6) | (rx_frame.data.u8[1] >> 6);
       max_fastcharging_current_amp = ((rx_frame.data.u8[4] & 0x01) << 8) | rx_frame.data.u8[3];
       DC_voltage_chargeport = (rx_frame.data.u8[7] << 4) | (rx_frame.data.u8[6] >> 4);
       break;
     case BMS_04:  // BMS 500ms normal, 100ms fast
-      can_msg_received |= RX_0x5A2;
-      BMS_5A2_counter = (rx_frame.data.u8[1] & 0x0F);  // Can be used to check CAN signal integrity later on
+      can_msg_received |= RX_BMS_04;
+      BMS_04_counter = (rx_frame.data.u8[1] & 0x0F);  // Can be used to check CAN signal integrity later on
       service_disconnect_switch_missing = (rx_frame.data.u8[1] & 0x20) >> 5;
       pilotline_open = (rx_frame.data.u8[1] & 0x10) >> 4;
       BMS_status_voltage_free = (rx_frame.data.u8[1] & 0xC0) >> 6;
@@ -697,8 +697,8 @@ void MebBattery::handle_incoming_can_frame(CAN_frame rx_frame) {
       }
       break;
     case BMS_07:  // BMS 500ms
-      can_msg_received |= RX_0x5CA;
-      BMS_5CA_counter = (rx_frame.data.u8[1] & 0x0F);
+      can_msg_received |= RX_BMS_07;
+      BMS_07_counter = (rx_frame.data.u8[1] & 0x0F);
       balancing_request = (rx_frame.data.u8[5] & 0x08) >> 3;
       // balancing_request: BMS requests a low current end charge to support balancing, maybe unused.
       battery_diagnostic = (rx_frame.data.u8[3] & 0x07);
@@ -712,8 +712,8 @@ void MebBattery::handle_incoming_can_frame(CAN_frame rx_frame) {
           ((rx_frame.data.u8[5] & 0x07) << 8) | rx_frame.data.u8[4];  //*50  ! Not usable, seems to always contain 0x7F0
       break;
     case BMS_20:  //BMS 10ms
-      can_msg_received |= RX_0x0CF;
-      BMS_0CF_counter = (rx_frame.data.u8[1] & 0x0F);
+      can_msg_received |= RX_BMS_20;
+      BMS_20_counter = (rx_frame.data.u8[1] & 0x0F);
       BMS_welded_contactors_status = (rx_frame.data.u8[1] & 0x60) >> 5;
       BMS_ext_limits_active = (rx_frame.data.u8[1] & 0x80) >> 7;
       BMS_mode = (rx_frame.data.u8[2] & 0x07);
@@ -944,8 +944,8 @@ void MebBattery::transmit_can(unsigned long currentMillis) {
   if (currentMillis - previousMillis50ms >= INTERVAL_50_MS) {
     previousMillis50ms = currentMillis;
 
-    /* Handle content for 0x0C0 message */
-    /* BMS needs to see this EM1 message. Content located in frame5&6 especially (can be static?)*/
+    /* Handle content for EM1_01 0x0C0 message */
+    /* BMS needs to see this EM1_01 message. Content located in frame5&6 especially (can be static?)*/
     /* Also the voltage seen externally to battery is in frame 7&8. At least for the 62kWh ID3 version does not seem to matter, but we send it anyway. */
     EM1_01_frame.data.u8[1] = ((EM1_01_frame.data.u8[1] & 0xF0) | counter_50ms);
     EM1_01_frame.data.u8[7] = ((datalayer.battery.status.voltage_dV / 10) * 4) & 0x00FF;
@@ -1065,7 +1065,7 @@ void MebBattery::transmit_can(unsigned long currentMillis) {
 
     // MSG_HYB_30_frame does not need CRC even though it has it. Empty in some logs as well.
 
-    //TODO: NMH_DCDC_NV_frame & NMH_Gateway_frame & NMH_Klima_frame has CAN sleep commands. May be removed?
+    // TODO: NMH_DCDC_NV_frame & NMH_Gateway_frame & NMH_Klima_frame have CAN sleep commands. Maybe to be removed?
 
     transmit_can_frame(&Klima_Sensor_02_frame);
     transmit_can_frame(&MSG_HYB_30_frame);
@@ -1201,11 +1201,11 @@ void MebBattery::transmit_can(unsigned long currentMillis) {
   if (currentMillis - previousMillis500ms >= INTERVAL_500_MS) {
     previousMillis500ms = currentMillis;
 
-    transmit_can_frame(&eTM_01_frame);  //eTM, Cooling valves and pumps for BMS
-    transmit_can_frame(&HVEM_04_frame);       // Battery heating requests
-    transmit_can_frame(&Klima_EV_06_frame);  //Climate, heatpump and priorities
-    transmit_can_frame(&ORU_01_frame);  //ORU, OTA update message for reserving battery
-    transmit_can_frame(&Standklima_01_frame);  //Climate, request to BMS for starting preconditioning
+    transmit_can_frame(&eTM_01_frame);        //eTM, Cooling valves and pumps for BMS
+    transmit_can_frame(&HVEM_04_frame);       //Battery heating requests
+    transmit_can_frame(&Klima_EV_06_frame);   //Climate, heatpump and priorities
+    transmit_can_frame(&ORU_01_frame);        //ORU, OTA update message for reserving battery
+    transmit_can_frame(&Standklima_01_frame); //Climate, request to BMS for starting preconditioning
   }
 
   //Send 1s CANFD message
@@ -1227,13 +1227,13 @@ void MebBattery::transmit_can(unsigned long currentMillis) {
     seconds = (seconds + 1) % 60;
 
     counter_1000ms = (counter_1000ms + 1) % 16;  //Goes from 0-1-2-3...15-0-1-2-3..
-    transmit_can_frame(&Diagnose_01_frame);                // Diagnostics - Needed for contactor closing
-    transmit_can_frame(&Motor_Code_01_frame);                // Motor - OBD
-    transmit_can_frame(&Reichweite_01_frame);                // Loading profile
-    transmit_can_frame(&Systeminfo_01_frame);                // Systeminfo
-    transmit_can_frame(&Temperaturen_01_frame);           // Temperature QBit
+    transmit_can_frame(&Diagnose_01_frame);      // Diagnostics - Needed for contactor closing
+    transmit_can_frame(&Motor_Code_01_frame);    // Motor - OBD
+    transmit_can_frame(&Reichweite_01_frame);    // Loading profile
+    transmit_can_frame(&Systeminfo_01_frame);    // Systeminfo
+    transmit_can_frame(&Temperaturen_01_frame);  // Temperature QBit
 
-    transmit_obd_can_frame(0x18DA05F1, can_config.battery, true);
+    transmit_obd_can_frame(OBD_Hybrid_01_Req, can_config.battery, true);
   }
 
   static auto last_real_bms_status = datalayer.battery.status.real_bms_status;

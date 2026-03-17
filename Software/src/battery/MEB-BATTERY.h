@@ -207,7 +207,14 @@ class MebBattery : public CanBattery {
   static const int BMS_35 = 0x1A555683;
   static const int BMS_CMC_04 = 0x16A954E8;
   static const int BMS_DC_01 = 0x578;
+  static const int BMS_HYB_02 = 0x97;
+  static const int BMS_HYB_04 = 0x124;
+  static const int BMS_HYB_06 = 0x6A3;
+  static const int EM_HYB_05 = 0x6A4;
+  static const int MSG_HYB_01 = 0x3A6;
+  static const int DC_HYB_02 = 0x3AF;
   static const int DCDC_04 = 0xF7;
+  static const int Motor_EV_01 = 0x187;
   static const int Airbag_01 = 0x40;
   static const int EM1_01 = 0xC0;
   static const int ESC_51_Auth = 0xFC;
@@ -234,6 +241,7 @@ class MebBattery : public CanBattery {
   static const int HVLM_14 = 0x272;
   static const int HVK_01 = 0x503;
   static const int KN_Hybrid_01 = 0x17F0007B;
+  static const int Kombi_02 = 0x6B7;
 
 
   unsigned long previousMillis10ms = 0;   // will store last time a 10ms CAN Message was send
@@ -242,7 +250,7 @@ class MebBattery : public CanBattery {
   unsigned long previousMillis50ms = 0;   // will store last time a 50ms CAN Message was send
   unsigned long previousMillis100ms = 0;  // will store last time a 100ms CAN Message was send
   unsigned long previousMillis200ms = 0;  // will store last time a 200ms CAN Message was send
-  unsigned long previousMillis500ms = 0;  // will store last time a 200ms CAN Message was send
+  unsigned long previousMillis500ms = 0;  // will store last time a 500ms CAN Message was send
   unsigned long previousMillis1s = 0;     // will store last time a 1s CAN Message was send
 
   bool toggle = false;
@@ -256,6 +264,13 @@ class MebBattery : public CanBattery {
   uint8_t counter_040 = 0;
   uint8_t counter_0F7 = 0;
   uint8_t counter_3b5 = 0;
+  uint8_t BMS_04_counter = 0;
+  uint8_t BMS_07_counter = 0;
+  uint8_t BMS_20_counter = 0;
+  uint8_t EM1_01_counter = 0;
+  uint8_t BMS_DC_01_counter = 0;
+  uint8_t BMS_11_counter = 0;
+  uint8_t BMS_11_CRC = 0;
 
   uint32_t poll_pid = PID_CELLVOLTAGE_CELL_85;  // We start here to quickly determine the cell size of the pack.
   bool nof_cells_determined = false;
@@ -271,13 +286,6 @@ class MebBattery : public CanBattery {
   uint16_t battery_allowed_discharge_power = 0;
   uint16_t cellvoltages_polled[108] = {0};
   uint16_t tempval = 0;
-  uint8_t BMS_16A954A6_CRC = 0;
-  uint8_t BMS_5A2_counter = 0;
-  uint8_t BMS_5CA_counter = 0;
-  uint8_t BMS_0CF_counter = 0;
-  uint8_t BMS_0C0_counter = 0;
-  uint8_t BMS_578_counter = 0;
-  uint8_t BMS_16A954A6_counter = 0;
   bool BMS_ext_limits_active = false;  //The current current limits of the HV battery are expanded to start the combustion engine / confirmation of the request
   uint8_t BMS_mode = 0x07;  //0: standby; Gates open; Communication active 1: Main contactor closed / HV network activated / normal driving operation
   //2: assigned depending on the project (e.g. balancing, extended DC fast charging) //3: external charging
