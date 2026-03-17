@@ -15,18 +15,33 @@ void BydModbusInverter::update_values() {
 
 void BydModbusInverter::handle_static_data() {
   // Store the data into the array
-  static uint16_t si_data[] = {21321, 1};
-  static uint16_t byd_data[] = {16985, 17408, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-  static uint16_t battery_data[] = {16985, 17440, 16993, 29812, 25970, 31021, 17007, 30752,
-                                    20594, 25965, 26997, 27936, 18518, 0,     0,     0};
-  static uint16_t volt_data[] = {13614, 12288, 0, 0, 0, 0, 0, 0, 13102, 12854, 0, 0, 0, 0, 0, 0};
-  static uint16_t serial_data[] = {20528, 13104, 21552, 12848, 23089, 14641, 12593, 14384,
-                                   12336, 12337, 0,     0,     0,     0,     0,     0};
-  static uint16_t static_data[] = {1, 0};
-  static uint16_t* data_array_pointers[] = {si_data, byd_data, battery_data, volt_data, serial_data, static_data};
-  static uint16_t data_sizes[] = {sizeof(si_data),   sizeof(byd_data),    sizeof(battery_data),
-                                  sizeof(volt_data), sizeof(serial_data), sizeof(static_data)};
-  static uint16_t i = 100;
+  // Storage interface_id SI
+  static const uint16_t si_data[] = {0x5349, 0x0001};
+  // Manufacturer: BYD
+  static const uint16_t byd_data[] = {0x4259, 0x4400, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+  // Battery Model: "BYD Battery-Box Premium HV"
+  static const uint16_t battery_data[] = {0x4259, 0x4420, 0x4261, 0x7474, 0x6572, 0x792D, 0x426F, 0x7820,
+                                          0x5072, 0x656D, 0x6975, 0x6D20, 0x4856,   0x00,   0x00,   0x00};
+  // Hardware and firmware version (5.0 and 3.24)
+  static const uint16_t fw_ver_data[] = {0x352E, 0x3000, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x332E, 0x3236, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+  // Battery serial "P030T020Z2308081297     "
+  static const uint16_t serial_data[] = {0x5030, 0x3330, 0x5430, 0x3230, 0x5A32, 0x3330, 0x3830, 0x3831,
+                                         0x3239, 0x3700,   0x00,   0x00,   0x00,   0x00,   0x00,   0x00};
+  // Protocol version
+  static const uint16_t protocol_version_data[] = {0x0001, 0x00};
+
+  static const uint16_t* const data_array_pointers[] = {si_data, byd_data, battery_data, fw_ver_data, serial_data,
+                                                        protocol_version_data};
+  static const size_t data_sizes[] = {sizeof(si_data),    sizeof(byd_data),    sizeof(battery_data),
+                                      sizeof(fw_ver_data),  sizeof(serial_data), sizeof(protocol_version_data)};
+
+  static const uint16_t init_p201[] = {0x00, 0x00, 0x00, MAX_POWER, MAX_POWER, 0x00, 0x00,
+                                       0xD000, 0x000A, 0xD000, 0x000A, 0x00,      0x00};
+
+  static const uint16_t init_p301[] = {0x00, 0x00, 0x80, 0x00,   0x00, 0x00, 0x00,   0x00, 0x00,   0x07D0, 0x00,   0x07D0,
+                                       0x4B, 0x5F, 0x00, 0x00,   0x10, 0x58D5, 0x00, 0x00, 0x0D,   0xCB60, 0xE6,   0x26AC};
+
+  uint16_t i = 100;
   for (uint8_t arr_idx = 0; arr_idx < sizeof(data_array_pointers) / sizeof(uint16_t*); arr_idx++) {
     uint16_t data_size = data_sizes[arr_idx];
     for (int j = 0; j < data_size / sizeof(uint16_t); j++) {
@@ -34,12 +49,11 @@ void BydModbusInverter::handle_static_data() {
     }
     i += data_size / sizeof(uint16_t);
   }
-  static uint16_t init_p201[13] = {0, 0, 0, MAX_POWER, MAX_POWER, 0, 0, 53248, 10, 53248, 10, 0, 0};
+
   for (int i = 0; i < sizeof(init_p201) / sizeof(uint16_t); i++) {
     mbPV[200 + i] = init_p201[i];
   }
-  static uint16_t init_p301[24] = {0,  0,  128, 0, 0,  0,     0, 0, 0,  2000,  0,   2000,
-                                   75, 95, 0,   0, 16, 22741, 0, 0, 13, 52064, 230, 9900};
+
   for (int i = 0; i < sizeof(init_p301) / sizeof(uint16_t); i++) {
     mbPV[300 + i] = init_p301[i];
   }
