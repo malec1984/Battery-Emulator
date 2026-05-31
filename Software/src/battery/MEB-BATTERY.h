@@ -2,8 +2,18 @@
 #define MEB_BATTERY_H
 #include "CanBattery.h"
 #include "MEB-HTML.h"
+ 
+// Runtime-selectable MEB model/variant.
+// Stored in NVM key "MEBMODEL": 0=Auto, 1=MEB BMC, 2=MQB Evo BMC
+enum class MebModel : uint8_t {
+  Auto = 0,
+  MEB_BMC = 1,
+  MQBEvo_BMC = 2,
+};
 
-class MebBattery : public CanBattery {
+extern uint8_t user_selected_meb_model;
+
+class MebBattery : public CanBattery, public IsoTp {
  public:
   // Use this constructor for the second battery.
   MebBattery(DATALAYER_BATTERY_TYPE* datalayer_ptr, DATALAYER_INFO_MEB* extended, CAN_Interface targetCan)
@@ -24,17 +34,37 @@ class MebBattery : public CanBattery {
   virtual void transmit_can(unsigned long currentMillis);
   bool supports_real_BMS_status() { return true; }
   bool supports_charged_energy() { return true; }
+  bool supports_reset_DTC() { return true; }
+  void reset_DTC() { datalayer_extended.meb.UserRequestDTCreset = true; }
+  bool supports_read_DTC() { return true; }
+  void read_DTC() { datalayer_extended.meb.UserRequestDTCreadout = true; }
+  bool supports_reset_crash() { return true; }
+  void reset_crash() { datalayer_extended.meb.UserRequestCrashReset = true; }
   static constexpr const char* Name = "Volkswagen Group MEB platform via CAN-FD";
 
   BatteryHtmlRenderer& get_status_renderer() { return renderer; }
 
  private:
+  /* validate crc for some CAN frames */
   uint8_t vw_crc_calc(const uint8_t* inputBytes, uint8_t length, uint32_t address);
+  /* send a UDS ReadDataByIdentifier request for poll_pid via ISO-TP and advance poll_pid */
+  void uds_read_data_by_id(uint16_t did, unsigned long currentMillis);
+  /* handle UDS response received via ISO-TP */
+  void uds_response_handler(uint8_t* data, int len, enum isotp_tatype type);
+  /* drive basic settings state machine — called every transmit_can() tick */
+  void handle_basic_settings(unsigned long currentMillis);
+  /* IsoTp overrides: send a raw CAN frame */
+  void on_isotp_can_tx(uint32_t can_id, uint8_t* can_data, uint8_t can_dlc) override;
+  /* IsoTp override: process an assembled ISO-TP message */
+  void on_isotp_rx_complete(uint8_t* data, int len, isotp_tatype tatype) override;
 
   MebHtmlRenderer renderer;
 
   DATALAYER_BATTERY_TYPE* datalayer_battery;
   DATALAYER_INFO_MEB* datalayer_meb;
+
+  MebModel configured_model = MebModel::MEB_BMC;
+  MebModel active_model = MebModel::MEB_BMC;
 
   static const int MAX_PACK_VOLTAGE_84S_DV = 3528;  //5000 = 500.0V
   static const int MIN_PACK_VOLTAGE_84S_DV = 2520;
@@ -189,6 +219,7 @@ class MebBattery : public CanBattery {
   static const int ISO_Hybrid_01_Resp = 0x17FE007B;
   static const int ISO_Hybrid_01_Req_FD  = 0x1C40007B;
   static const int ISO_Hybrid_01_Resp_FD = 0x1C42007B;
+  static const int ISO_Functional_Req_FD = 0x1C410000;
   static const int BMS_04 = 0x5A2;
   static const int BMS_05 = 0x2AF;
   static const int BMS_07 = 0x5CA;
@@ -243,7 +274,6 @@ class MebBattery : public CanBattery {
   static const int KN_Hybrid_01 = 0x17F0007B;
   static const int Kombi_02 = 0x6B7;
 
-
   unsigned long previousMillis10ms = 0;   // will store last time a 10ms CAN Message was send
   unsigned long previousMillis20ms = 0;   // will store last time a 20ms CAN Message was send
   unsigned long previousMillis40ms = 0;   // will store last time a 40ms CAN Message was send
@@ -252,6 +282,30 @@ class MebBattery : public CanBattery {
   unsigned long previousMillis200ms = 0;  // will store last time a 200ms CAN Message was send
   unsigned long previousMillis500ms = 0;  // will store last time a 500ms CAN Message was send
   unsigned long previousMillis1s = 0;     // will store last time a 1s CAN Message was send
+
+  static const int MAX_DTC_COUNT = CONFIG_ISOTP_MAX_MSG_LENGTH / 8;    // Maximum number of DTCs to store/display
+  static constexpr unsigned long UDS_REQUEST_TIMEOUT_MS = 1000;  // Max wait for a UDS response before retrying
+  static constexpr unsigned long BASIC_SETTINGS_POLL_INTERVAL_MS = 500;  // How often to poll routine result
+  bool uds_request_pending = false;           // True while waiting for a UDS response
+  unsigned long uds_request_timestamp = 0;    // millis() when the last UDS request was sent
+
+  // Crash reset state machine
+  enum class BasicSettingsState : uint8_t {
+    IDLE = 0,
+    SEND_EXT_SESSION,
+    WAIT_EXT_SESSION,
+    SEND_SEED_REQ,
+    WAIT_SEED,
+    WAIT_KEY_RESP,
+    SEND_ROUTINE,
+    WAIT_ROUTINE_START,
+    POLL_ROUTINE,
+  };
+  BasicSettingsState basic_settings_state = BasicSettingsState::IDLE;
+  uint16_t basic_settings_routine_id = 0;     // 2-byte routine identifier sent in 31 01 <hi> <lo>
+  uint16_t basic_settings_routine_param = 0;  // 2-byte routine parameter sent after the routine ID
+  uint32_t security_access_seed = 0;
+  unsigned long basic_settings_poll_ms = 0;
 
   bool toggle = false;
   uint8_t counter_1000ms = 0;
@@ -270,7 +324,7 @@ class MebBattery : public CanBattery {
   uint8_t EM1_01_counter = 0;
   uint8_t BMS_DC_01_counter = 0;
   uint8_t BMS_11_counter = 0;
-  uint8_t BMS_11_CRC = 0;
+  uint8_t BMS_11_CRC = 0; 
 
   uint32_t poll_pid = PID_CELLVOLTAGE_CELL_85;  // We start here to quickly determine the cell size of the pack.
   bool nof_cells_determined = false;
@@ -295,6 +349,10 @@ class MebBattery : public CanBattery {
   bool BMS_fault_emergency_shutdown_crash = false;  //Error: Safety-critical error (crash detection) Battery contactors are already opened / will be opened immediately Signal is read directly by the EMS and initiates an AKS of the PWR and an active discharge of the DC link
   uint32_t BMS_voltage_intermediate = 2000;
   uint32_t BMS_voltage = 1480;
+  int32_t BMS_usable_batt_energy_Wh = 0;
+  int32_t BMS_usable_batt_energy_t_Wh = 0;
+  int32_t BMS_max_usable_batt_energy_Wh = 0;
+  uint16_t BMS_nominal_voltage_dV = 0;
   uint8_t BMS_status_voltage_free = 0;  //0=Init, 1=BMS intermediate circuit voltage-free (U_Zwkr < 20V), 2=BMS intermediate circuit not voltage-free (U_Zwkr >/= 25V, hysteresis), 3=Error
   bool BMS_OBD_MIL = false;
   uint8_t BMS_error_status = 0x7;  //0 Component_IO, 1 Restricted_CompFkt_Isoerror_I, 2 Restricted_CompFkt_Isoerror_II, 3 Restricted_CompFkt_Interlock, 4 Restricted_CompFkt_SD, 5 Restricted_CompFkt_Performance red, 6 = No component function, 7 = Init
@@ -391,10 +449,10 @@ class MebBattery : public CanBattery {
   uint8_t bus_knockout_timer = 0;
   uint8_t hybrid_wakeup_reason = 0;
   uint8_t wakeup_type = 0;
-  bool instrumentation_cluster_request = false;
+  bool instrument_cluster_request = false;
   uint8_t seconds = 0;
-  uint32_t first_can_msg = 0;
-  uint32_t last_can_msg_timestamp = 0;
+  unsigned long first_can_msg_timestamp = 0;
+  unsigned long last_can_msg_timestamp = 0;
   bool hv_requested = false;
   int32_t kwh_charge = 0;
   int32_t kwh_discharge = 0;
@@ -418,16 +476,18 @@ class MebBattery : public CanBattery {
 #define DC_FASTCHARGE_LS1 0x80
 #define DC_FASTCHARGE_LS2 0xC0
 
-  CAN_frame UDS_READ_DID_FRAME = {.FD = true,
-                                 .ext_ID = true,
-                                 .DLC = 8,
-                                 .ID = ISO_Hybrid_01_Req_FD,  // SOC 02 8C
-                                 .data = {0x03, 0x22, 0x02, 0x8C, 0x55, 0x55, 0x55, 0x55}};
-  static constexpr CAN_frame ISOTP_ACK_FRAME = {.FD = true,
+  static constexpr CAN_frame OBD_CLEAR_DTC = {.FD = true,
                                               .ext_ID = true,
                                               .DLC = 8,
-                                              .ID = ISO_Hybrid_01_Req_FD,  // Ack
-                                              .data = {0x30, 0x00, 0x00, 0x55, 0x55, 0x55, 0x55, 0x55}};
+                                              .ID = ISO_Functional_Req_FD,
+                                              .data = {0x01, 0x04, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55}};
+  // TesterPresent (3E 80) sent to the BMS physical address to keep the extended session alive.
+  // Bit7 of subFunction = 1 suppresses the positive response, so no UDS reply is expected.
+  static constexpr CAN_frame Tester_present_frame = {.FD = true,
+                                                     .ext_ID = true,
+                                                     .DLC = 8,
+                                                     .ID = ISO_Hybrid_01_Req_FD,
+                                                     .data = {0x02, 0x3E, 0x80, 0x55, 0x55, 0x55, 0x55, 0x55}};
   //Messages needed for contactor closing
   CAN_frame Airbag_01_frame = {.FD = true,  // Airbag
                        .ext_ID = false,
@@ -558,6 +618,11 @@ class MebBattery : public CanBattery {
       .ID = Motor_54,  //CRC needed, content otherwise
       .data = {0x38, 0x0A, 0xFF, 0x01, 0x01, 0xFF, 0x01, 0x24, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFE,
                0xFF, 0xFF, 0x00, 0xFF, 0xFF, 0x25, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFE}};
+  static constexpr CAN_frame Kombi_02_frame = {.FD = false,
+                                        .ext_ID = false,
+                                        .DLC = 8,
+                                        .ID = Kombi_02,  // content
+                                        .data = {0xFE, 0xFF, 0xEF, 0xFF, 0x3F, 0x1C, 0x02, 0x94}};
 
   uint32_t can_msg_received = 0;
 };

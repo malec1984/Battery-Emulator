@@ -407,7 +407,8 @@ void init_webserver() {
       "GATEWAY4",  "SUBNET1",    "SUBNET2",    "SUBNET3",    "SUBNET4",     "MQTTPORT",  "MQTTTIMEOUT",
       "SOFAR_ID",  "PYLONSEND",  "INVCELLS",   "INVMODULES", "INVCELLSPER", "INVVLEVEL", "INVCAPACITY",
       "INVBTYPE",  "CANFREQ",    "CANFDFREQ",  "PRECHGMS",   "PWMFREQ",     "PWMHOLD",   "GTWCOUNTRY",
-      "GTWMAPREG", "GTWCHASSIS", "GTWPACK",    "LEDMODE",    "GPIOOPT1",    "GPIOOPT2",  "GPIOOPT3",
+      "GTWMAPREG", "GTWCHASSIS", "GTWPACK",    "MEBMODEL",   "LEDMODE",     "GPIOOPT1",  "GPIOOPT2",
+      "GPIOOPT3",
   };
 
   const char* stringSettingNames[] = {"APNAME",       "APPASSWORD", "HOSTNAME",        "MQTTSERVER",     "MQTTUSER",

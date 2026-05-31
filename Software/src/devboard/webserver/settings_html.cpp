@@ -117,6 +117,12 @@ static const std::map<int, String> sungrow_models = {
     {3, "SBR160 (16.0 kWh, 5 modules)"}, {4, "SBR192 (19.2 kWh, 6 modules)"}, {5, "SBR224 (22.4 kWh, 7 modules)"},
     {6, "SBR256 (25.6 kWh, 8 modules)"}};
 
+static const std::map<int, String> meb_models = {
+  {0, "Auto"},
+  {1, "MEB"},
+  {2, "MQB Evo"},
+};
+
 const char* name_for_button_type(STOP_BUTTON_BEHAVIOR behavior) {
   switch (behavior) {
     case STOP_BUTTON_BEHAVIOR::LATCHING_SWITCH:
@@ -219,6 +225,10 @@ String settings_processor(const String& var, BatteryEmulatorSettingsStore& setti
     return options_for_enum_with_none(
         (STOP_BUTTON_BEHAVIOR)settings.getUInt("EQSTOP", (int)STOP_BUTTON_BEHAVIOR::NOT_CONNECTED),
         name_for_button_type, STOP_BUTTON_BEHAVIOR::NOT_CONNECTED);
+  }
+
+  if (var == "MEBMODEL") {
+    return options_from_map(settings.getUInt("MEBMODEL", 1), meb_models);
   }
 
   if (var == "BATT2COMM") {
@@ -1070,6 +1080,11 @@ const char* getCANInterfaceName(CAN_Interface interface) {
       display: contents;
     }
 
+    form .if-meb { display: none; }
+    form[data-battery="19"] .if-meb {
+      display: contents;
+    }
+
     form .if-estimated { display: none; } /* Integrations with manually set charge/discharge power */
     form[data-battery="3"] .if-estimated, 
     form[data-battery="4"] .if-estimated, 
@@ -1217,6 +1232,13 @@ const char* getCANInterfaceName(CAN_Interface interface) {
         <select name='battery' id='battery'>
             %BATTTYPE%
         </select>
+
+        <div class="if-meb">
+          <label for='MEBMODEL'>MEB model: </label>
+          <select name='MEBMODEL' id='MEBMODEL'>
+            %MEBMODEL%
+          </select>
+        </div>
 
         <div class="if-nissan">
             <label for='interlock'>Interlock required: </label>

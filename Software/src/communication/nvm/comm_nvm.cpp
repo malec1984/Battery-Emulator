@@ -106,6 +106,7 @@ void init_stored_settings() {
   user_selected_tesla_GTW_mapRegion = settings.getUInt("GTWMAPREG", 0);
   user_selected_tesla_GTW_chassisType = settings.getUInt("GTWCHASSIS", 0);
   user_selected_tesla_GTW_packEnergy = settings.getUInt("GTWPACK", 0);
+  user_selected_meb_model = settings.getUInt("MEBMODEL", 1);
 
   auto readIf = [](const char* settingName) {
     auto batt1If = (comm_interface)settings.getUInt(settingName, (int)comm_interface::CanNative);

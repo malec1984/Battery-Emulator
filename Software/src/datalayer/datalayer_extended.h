@@ -801,6 +801,15 @@ struct DATALAYER_INFO_MEB {
 
   float temp_points[18] = {0};
   int16_t celltemperature_dC[56] = {0};
+  uint32_t dtc_codes[64] = {0};            // Array of DTC codes (3 bytes each, stored as uint32)
+  uint8_t dtc_status[64] = {0};            // Status byte for each DTC
+  uint8_t dtc_count = 0;                   // Number of valid DTCs currently stored
+  unsigned long dtc_last_read_millis = 0;  // Timestamp of last successful read
+  bool dtc_read_in_progress = false;       // Flag to prevent concurrent reads
+  bool dtc_read_failed = false;            // Indicates last read attempt failed
+  bool UserRequestDTCreset = false;        // User requesting DTC reset via WebUI
+  bool UserRequestDTCreadout = false;      // User requesting DTC readout via WebUI
+  bool UserRequestCrashReset = false;      // User requesting crash reset via WebUI
 };
 
 struct DATALAYER_INFO_VOLVO_POLESTAR {
