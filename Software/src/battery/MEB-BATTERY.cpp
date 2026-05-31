@@ -635,7 +635,7 @@ void MebBattery::handle_incoming_can_frame(CAN_frame rx_frame) {
           cellvoltages[158] = (((rx_frame.data.u8[50] & 0x0F) << 8) | rx_frame.data.u8[49]) + 1000;
           cellvoltages[159] = ((rx_frame.data.u8[51] << 4) | (rx_frame.data.u8[50] >> 4)) + 1000;
           break;
-        */
+
         default:  //Invalid mux
           //TODO: Add corrupted CAN message counter tick?
           break;
@@ -895,8 +895,8 @@ void MebBattery::transmit_can(unsigned long currentMillis) {
   if (currentMillis - previousMillis50ms >= INTERVAL_50_MS) {
     previousMillis50ms = currentMillis;
 
-    /* Handle content for 0x0C0 message */
-    /* BMS needs to see this EM1 message. Content located in frame5&6 especially (can be static?)*/
+    /* Handle content for EM1_01 0x0C0 message */
+    /* BMS needs to see this EM1_01 message. Content located in frame5&6 especially (can be static?)*/
     /* Also the voltage seen externally to battery is in frame 7&8. At least for the 62kWh ID3 version does not seem to matter, but we send it anyway. */
     EM1_01_frame.data.u8[1] = ((EM1_01_frame.data.u8[1] & 0xF0) | counter_50ms);
     EM1_01_frame.data.u8[7] = ((datalayer.battery.status.voltage_dV / 10) * 4) & 0x00FF;
@@ -1015,7 +1015,7 @@ void MebBattery::transmit_can(unsigned long currentMillis) {
 
     // MSG_HYB_30_frame does not need CRC even though it has it. Empty in some logs as well.
 
-    //TODO: NMH_DCDC_NV_frame & NMH_Gateway_frame & NMH_Klima_frame has CAN sleep commands. May be removed?
+    // TODO: NMH_DCDC_NV_frame & NMH_Gateway_frame & NMH_Klima_frame have CAN sleep commands. Maybe to be removed?
 
     transmit_can_frame(&Klima_Sensor_02_frame);
     transmit_can_frame(&MSG_HYB_30_frame);
@@ -1599,6 +1599,7 @@ void MebBattery::setup(void) {  // Performs one time setup at startup
   datalayer.battery.info.min_cell_voltage_mV = MIN_CELL_VOLTAGE_MV;
   datalayer.battery.info.max_cell_voltage_deviation_mV = MAX_CELL_DEVIATION_MV;
   memset(cellvoltages_polled, 0, sizeof(cellvoltages_polled));
+  memset(cellvoltages, 0, sizeof(cellvoltages));
 
   const uint8_t selected = std::min<uint8_t>(user_selected_meb_model, (uint8_t)2);
   configured_model = static_cast<MebModel>(selected);

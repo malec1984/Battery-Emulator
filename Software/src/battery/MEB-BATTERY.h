@@ -337,7 +337,7 @@ class MebBattery : public CanBattery, public IsoTp {
   uint16_t battery_min_discharge_voltage = 0;
   uint16_t battery_allowed_charge_power = 0;
   uint16_t battery_allowed_discharge_power = 0;
-  uint16_t cellvoltages_polled[108];
+  uint16_t cellvoltages_polled[108] = {0};
   uint16_t tempval = 0;
   bool BMS_ext_limits_active =
       false;  //The current current limits of the HV battery are expanded to start the combustion engine / confirmation of the request
@@ -434,7 +434,7 @@ class MebBattery : public CanBattery, public IsoTp {
   uint16_t predicted_power_dyn_standard_watt = 0;
   uint8_t predicted_time_dyn_standard_minutes = 0;
   uint8_t mux = 0;
-  //uint16_t cellvoltages[160] = {0};
+  uint16_t cellvoltages[160] = {0};
   uint16_t duration_discharge_power_watt = 0;
   uint16_t duration_charge_power_watt = 0;
   uint16_t maximum_voltage = 0;
