@@ -194,6 +194,63 @@ bool init_CAN() {
     settings2517 = new ACAN2517FDSettings(quartz_fd_frequency, bitRate, DataBitRateFactor::x4);
     // Arbitration bit rate: 250/500 kbit/s, data bit rate: 1/2 Mbit/s
 
+    // Retarget sample points:
+    // - Arbitration phase stays at library default (80%).
+    // - Data phase sample point should be ~70%.
+    if (settings2517->mDataBitRateFactor != DataBitRateFactor::x1) {
+      const uint32_t desiredDataSamplePointPpc = 70; // %
+
+      const uint32_t totalDataTQ = 1UL + settings2517->mDataPhaseSegment1 + settings2517->mDataPhaseSegment2;
+      uint32_t sampleTQ = (totalDataTQ * desiredDataSamplePointPpc + 50UL) / 100UL; // rounded
+
+      if (sampleTQ < 3) {
+        sampleTQ = 3; // ensures seg1 >= 2 and seg2 >= 1
+      } else if (sampleTQ > (totalDataTQ - 1)) {
+        sampleTQ = totalDataTQ - 1;
+      }
+
+      uint32_t dataSeg1 = sampleTQ - 1;       // mDataPhaseSegment1
+      uint32_t dataSeg2 = totalDataTQ - sampleTQ; // mDataPhaseSegment2
+
+      // Enforce MCP2517FD limits while keeping totalDataTQ constant.
+      if (dataSeg1 < 2) {
+        dataSeg1 = 2;
+        dataSeg2 = totalDataTQ - dataSeg1 - 1;
+      }
+      if (dataSeg2 < 1) {
+        dataSeg2 = 1;
+        dataSeg1 = totalDataTQ - dataSeg2 - 1;
+      }
+      if (dataSeg1 > ACAN2517FDSettings::MAX_DATA_PHASE_SEGMENT_1) {
+        dataSeg1 = ACAN2517FDSettings::MAX_DATA_PHASE_SEGMENT_1;
+        dataSeg2 = totalDataTQ - dataSeg1 - 1;
+      }
+      if (dataSeg2 > ACAN2517FDSettings::MAX_DATA_PHASE_SEGMENT_2) {
+        dataSeg2 = ACAN2517FDSettings::MAX_DATA_PHASE_SEGMENT_2;
+        dataSeg1 = totalDataTQ - dataSeg2 - 1;
+      }
+
+      // Final clamp (should be redundant, but keeps us safe).
+      if (dataSeg1 < 2) {
+        dataSeg1 = 2;
+      }
+      if (dataSeg2 < 1) {
+        dataSeg2 = 1;
+      }
+
+      settings2517->mDataPhaseSegment1 = (uint8_t)dataSeg1;
+      settings2517->mDataPhaseSegment2 = (uint8_t)dataSeg2;
+      settings2517->mDataSJW = settings2517->mDataPhaseSegment2;
+
+      // Keep TDCO consistent with the chosen dataSeg1 (matches library constructor formula).
+      if (settings2517->actualDataBitRate() > 1000000UL) {
+        const int tdco = (int)settings2517->mBitRatePrescaler * (int)settings2517->mDataPhaseSegment1;
+        settings2517->mTDCO = (tdco > 63) ? 63 : (int8_t)tdco;
+      } else {
+        settings2517->mTDCO = 0;
+      }
+    }
+
     // ListenOnly / Normal20B / NormalFDs
     settings2517->mRequestedMode = use_canfd_as_can ? ACAN2517FDSettings::Normal20B : ACAN2517FDSettings::NormalFD;
 
@@ -215,6 +272,23 @@ bool init_CAN() {
       logging.println(settings2517->exactArbitrationBitRate() ? "yes)" : "no)");
       logging.print("Arbitration Sample point: ");
       logging.print(settings2517->arbitrationSamplePointFromBitStart());
+      logging.println("%");
+
+      logging.print("Data Phase segment 1: ");
+      logging.print(settings2517->mDataPhaseSegment1);
+      logging.print(" segment 2: ");
+      logging.print(settings2517->mDataPhaseSegment2);
+      logging.print(" SJW: ");
+      logging.println(settings2517->mDataSJW);
+      logging.print("TDCO: ");
+      logging.println(settings2517->mTDCO);
+      logging.print("Actual Data Bit Rate: ");
+      logging.print(settings2517->actualDataBitRate());
+      logging.print(" bit/s");
+      logging.print(" (Exact:");
+      logging.println(settings2517->exactDataBitRate() ? "yes)" : "no)");
+      logging.print("Data Sample point: ");
+      logging.print(settings2517->dataSamplePointFromBitStart());
       logging.println("%");
     } else {
       logging.print("CAN-FD Configuration error 0x");

@@ -1,12 +1,53 @@
 #ifndef _MEB_HTML_H
 #define _MEB_HTML_H
 
+#include <LittleFS.h>
+#include <string.h>
 #include "../datalayer/datalayer.h"
 #include "../datalayer/datalayer_extended.h"
 #include "../devboard/webserver/BatteryHtmlRenderer.h"
 
 class MebHtmlRenderer : public BatteryHtmlRenderer {
  public:
+  String get_DTC_description(uint32_t code) {
+#ifndef SMALL_FLASH_DEVICE
+    if (!LittleFS.begin(false)) {
+      return "N/A";
+    }
+    File f = LittleFS.open("/meb_dtc.bin", "r");
+    if (!f) {
+      return "N/A";
+    }
+    static const size_t RECORD_SIZE = 148;
+    static const size_t S_DSC_OFFSET = 4;
+    static const size_t L_DSC_OFFSET = 56;  // 4 + 52
+    int lo = 0;
+    int hi = (int)(f.size() / RECORD_SIZE) - 1;
+    uint8_t buf[RECORD_SIZE];
+    while (lo <= hi) {
+      int mid = (lo + hi) / 2;
+      f.seek((size_t)mid * RECORD_SIZE);
+      f.read(buf, RECORD_SIZE);
+      uint32_t c;
+      memcpy(&c, buf, sizeof(uint32_t));
+      if (c == code) {
+        f.close();
+        return String(reinterpret_cast<char*>(buf + L_DSC_OFFSET)) + "<br />" +
+               String(reinterpret_cast<char*>(buf + S_DSC_OFFSET));
+      }
+      if (c < code) {
+        lo = mid + 1;
+      } else {
+        hi = mid - 1;
+      }
+    }
+    f.close();
+    return "Unknown";
+#else
+    return "N/A";
+#endif
+  }
+
   String get_status_html() {
     String content;
 
@@ -285,7 +326,98 @@ class MebHtmlRenderer : public BatteryHtmlRenderer {
         "<h4>Total charged: " + String(datalayer.battery.status.total_charged_battery_Wh / 1000.0, 1) + " kWh</h4>";
     content += "<h4>Total discharged: " + String(datalayer.battery.status.total_discharged_battery_Wh / 1000.0, 1) +
                " kWh</h4>";
+    // Diagnostic Trouble Codes Section
+    content +=
+        "<h3 style='color: #27b06c; border-bottom: 2px solid #27b06c; padding-bottom: 5px;'>🔧 Diagnostic Trouble "
+        "Codes</h3>";
+    content += "<div style='margin-left: 15px; margin-right: 15px;'>";
 
+    if (datalayer_extended.meb.dtc_last_read_millis == 0) {
+      // No DTC read has been performed yet
+      content +=
+          "<p style='color: #ff9800;'>ℹ DTCs have not been read yet. Click 'Read DTC' to scan for fault codes.</p>";
+    } else if (datalayer_extended.meb.dtc_read_failed) {
+      content += "<p style='color: #d32f2f;'>⚠ Last DTC read failed or not supported</p>";
+    } else if (datalayer_extended.meb.dtc_count == 0) {
+      content += "<p style='color: #4CAF50;'>✓ No DTCs present</p>";
+    } else {
+      content += "<p><strong>DTC Count:</strong> " + String(datalayer_extended.meb.dtc_count) + "</p>";
+
+      // Convert last read time to days:hours:minutes:seconds format
+      //unsigned long last_read_seconds = (millis() - datalayer_extended.meb.dtc_last_read_millis) / 1000;
+      unsigned long last_read_seconds = datalayer_extended.meb.dtc_last_read_millis / 1000;
+      unsigned long read_days = last_read_seconds / 86400;
+      unsigned long read_hours = (last_read_seconds % 86400) / 3600;
+      unsigned long read_minutes = (last_read_seconds % 3600) / 60;
+      unsigned long read_seconds = last_read_seconds % 60;
+
+      content += "<p><strong>Last Read:</strong> ";
+      if (read_days > 0) {
+        content += String(read_days) + "d ";
+      }
+      if (read_hours > 0 || read_days > 0) {
+        content += String(read_hours) + "h ";
+      }
+      content += String(read_minutes) + "m " + String(read_seconds) + "s ago</p>";
+
+      content += "<div style='overflow-x: auto; margin-top: 10px; margin-bottom: 15px;'>";
+      content +=
+          "<table style='width: auto; margin: 0 auto; border-collapse: separate; border-spacing: 0; border: 1px solid "
+          "#ddd; border-radius: 8px; overflow: hidden;'>";
+
+      content += "<thead>";
+      content += "<tr style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;'>";
+      content += "<th style='padding: 12px 15px; text-align: left; font-weight: 600;'>DTC Code</th>";
+      content += "<th style='padding: 12px 15px; text-align: left; font-weight: 600;'>Status</th>";
+      content += "<th style='padding: 12px 15px; text-align: left; font-weight: 600;'>Description</th>";
+      content += "</tr>";
+      content += "</thead>";
+
+      content += "<tbody>";
+
+      for (int i = 0; i < datalayer_extended.meb.dtc_count; i++) {
+        uint32_t code = datalayer_extended.meb.dtc_codes[i];
+        uint8_t status = datalayer_extended.meb.dtc_status[i];
+
+        char dtcStr[12];
+        sprintf(dtcStr, "%06lX", code);
+
+        String statusStr = "Stored";
+        String statusColor = "#757575";
+
+        if (status & 0x08) {
+          statusStr = "Confirmed";
+          statusColor = "#ff6f00";
+        }
+
+        if (status & 0x01) {
+          statusStr = "Active";
+          statusColor = "#d32f2f";
+        }
+
+        String description = get_DTC_description(code);
+        if (description.length() == 0) {
+          description = "Unknown";
+        }
+
+        content += "<tr>";
+        content +=
+            "<td style='padding: 12px 15px; border-top: 1px solid #e0e0e0; font-family: monospace; font-size: 1.1em; "
+            "font-weight: 600;'>" +
+            String(dtcStr) + "</td>";
+        content += "<td style='padding: 12px 15px; border-top: 1px solid #e0e0e0; color: " + statusColor +
+                  "; font-weight: 500;'>" + statusStr + "</td>";
+        content += "<td style='padding: 12px 15px; border-top: 1px solid #e0e0e0; font-size: 0.95em; color: #ddd;'>" +
+                  description + "</td>";
+        content += "</tr>";
+      }
+
+      content += "</tbody>";
+      content += "</table>";
+      content += "</div>";
+    }
+
+    content += "</div>";
     return content;
   }
 };

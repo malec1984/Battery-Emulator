@@ -113,6 +113,7 @@ void init_stored_settings() {
   user_selected_tesla_GTW_chassisType = settings.getUInt("GTWCHASSIS", 0);
   user_selected_tesla_GTW_packEnergy = settings.getUInt("GTWPACK", 0);
   user_selected_primo_gen24 = settings.getBool("PRIMOGEN24", false);
+  user_selected_meb_model = settings.getUInt("MEBMODEL", 1);
   user_set_rampdown_SOC = settings.getUInt("RAMPDOWNSOC", 9000);
 
   auto readIf = [&settings](const char* settingName) {
