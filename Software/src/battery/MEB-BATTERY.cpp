@@ -3,7 +3,6 @@
 #include <algorithm>  // For std::min and std::max
 #include <cstring>    //For unit test
 #include "../communication/can/comm_can.h"
-#include "../communication/can/obd.h"
 #include "../datalayer/datalayer.h"
 #include "../datalayer/datalayer_extended.h"  //For "More battery info" webpage
 #include "../devboard/utils/events.h"
@@ -792,7 +791,7 @@ void MebBattery::handle_incoming_can_frame(CAN_frame rx_frame) {
       isotp_receive(rx_frame.data.u8, rx_frame.DLC, ISOTP_TATYPE_PHYSICAL);
       break;
     case OBD_Hybrid_01_Resp:
-      handle_obd_frame(rx_frame, can_interface);
+      // not used for now.
       break;
     default:
       break;
@@ -1090,7 +1089,11 @@ void MebBattery::transmit_can(unsigned long currentMillis) {
         poll_pid = PID_SOH;
         break;
       case PID_SOH:
-        poll_pid = PID_CELLVOLTAGE_CELL_1;  // Start polling cell voltages
+        if (active_model == MebModel::MQBEvo_BMC) {
+          poll_pid = PID_SOC; // MQB Evo reads cell voltages directly from BMS_CMC_04;
+        } else {
+          poll_pid = PID_CELLVOLTAGE_CELL_1;  // Start polling cell voltages
+        }
         break;
       // Cell Voltage Cases.
       // Most of these are handled in the default case.
@@ -1178,8 +1181,6 @@ void MebBattery::transmit_can(unsigned long currentMillis) {
     if (basic_settings_state != BasicSettingsState::IDLE) {
       transmit_can_frame(&Tester_present_frame);  // Keep BMS in extended diagnostic session
     }
-
-    //transmit_obd_can_frame(OBD_Hybrid_01_Req, can_config.battery, true);
   }
 
   static auto last_real_bms_status = datalayer.battery.status.real_bms_status;
