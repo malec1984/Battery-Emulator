@@ -895,6 +895,9 @@ String processor(const String& var) {
 #ifdef HW_WAVESHARE
     content += " Hardware: Waveshare ESP32-S3-RS485-CAN";
 #endif  // HW_WAVESHARE
+#ifdef HW_WAVESHARE_POE_8CH
+    content += " Hardware: Waveshare 8-Channel PoE";
+#endif  // HW_WAVESHARE_POE_8CH
     content += " @ " + String(datalayer.system.info.CPU_temperature, 1) + " &deg;C</h4>";
     content += "<h4>Uptime: " + get_uptime() + "</h4>";
     if (datalayer.system.info.performance_measurement_active) {

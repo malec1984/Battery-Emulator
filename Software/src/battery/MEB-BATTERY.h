@@ -75,6 +75,7 @@ class MebBattery : public CanBattery, public IsoTp {
   static const int MAX_CELL_VOLTAGE_MV = 4250;  //Battery is put into emergency stop if one cell goes over this value
   static const int MIN_CELL_VOLTAGE_MV = 2700;  //Battery is put into emergency stop if one cell goes below this value
   static const int PID_SOC = 0x028C;
+  static const int PID_SOH = 0x50CE; // This isn't available on older firmware versions, 1141 and higher only.
   static const int PID_VOLTAGE = 0x1E3B;
   static const int PID_CURRENT = 0x1E3D;
   static const int PID_MAX_TEMP = 0x1E0E;
@@ -304,6 +305,7 @@ class MebBattery : public CanBattery, public IsoTp {
   uint16_t basic_settings_routine_id = 0;     // 2-byte routine identifier sent in 31 01 <hi> <lo>
   uint16_t basic_settings_routine_param = 0;  // 2-byte routine parameter sent after the routine ID
   uint32_t security_access_seed = 0;
+  uint32_t security_login_key = 20103; // This init value is for MEB only, MQB Evo is set in setup() after determining the model.
   unsigned long basic_settings_poll_ms = 0;
 
   bool toggle = false;
@@ -329,6 +331,7 @@ class MebBattery : public CanBattery, public IsoTp {
   bool nof_cells_determined = false;
   uint32_t pid_reply = 0;
   uint16_t battery_soc_polled = 0;
+  uint16_t battery_soh_polled = 0;
   uint16_t battery_voltage_polled = 1480;
   int16_t battery_current_polled = 0;
   int16_t battery_max_temp = 600;
@@ -636,7 +639,11 @@ class MebBattery : public CanBattery, public IsoTp {
                                                .DLC = 8,
                                                .ID = Kombi_02,  // content
                                                .data = {0xFE, 0xFF, 0xEF, 0xFF, 0x3F, 0x1C, 0x02, 0x94}};
-
+  CAN_frame Motor_EV_01_frame = {.FD = true,
+                                 .ext_ID = false,
+                                 .DLC = 8,
+                                 .ID = Motor_EV_01,  // content
+                                 .data = {0x00, 0x80, 0x12, 0x00, 0x00, 0x00, 0x30, 0x96}};
   uint32_t can_msg_received = 0;
 };
 

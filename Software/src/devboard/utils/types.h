@@ -116,7 +116,7 @@ typedef struct {
 
 std::string getBMSStatus(system_status_enum status);
 
-#ifdef HW_LILYGO2CAN
+#if defined(HW_LILYGO2CAN) || defined(HW_WAVESHARE_POE_8CH)
 /* Configurable GPIO options (device specific) */
 enum class GPIOOPT1 {
   // T-2CAN: WUP1/WUP2 on GPIO1/GPIO2

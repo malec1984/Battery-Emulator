@@ -231,9 +231,12 @@ void MebBattery::
       Wh_max = 82442 * 0.9025f;
     if (BMS_capacity_ah > 0)
       datalayer_battery->status.soh_pptt = 10000 * datalayer_battery->info.total_capacity_Wh / (Wh_max * 1.02564f);
+    if (battery_soh_polled > 0)
+      datalayer_battery->status.soh_pptt = battery_soh_polled; // If the SoH PID is available then overwrite the calculated SoH.
   } else if (active_model == MebModel::MQBEvo_BMC) {
     datalayer_battery->info.total_capacity_Wh = BMS_max_usable_batt_energy_Wh;
-    datalayer_battery->status.soh_pptt = 10000 * datalayer_battery->info.total_capacity_Wh / (26000 * 0.9025f);
+    if (battery_soh_polled > 0) // This will always be available on MQB Evo.
+      datalayer_battery->status.soh_pptt = battery_soh_polled;
   }
 
   datalayer_battery->status.remaining_capacity_Wh = usable_energy_amount_Wh * 5;
@@ -766,6 +769,8 @@ void MebBattery::handle_incoming_can_frame(CAN_frame rx_frame) {
         BMS_current = ((rx_frame.data.u8[4] & 0x7F) << 8) | rx_frame.data.u8[3];
         BMS_voltage_intermediate = (((rx_frame.data.u8[6] & 0x0F) << 8) + (rx_frame.data.u8[5]));
         BMS_voltage = ((rx_frame.data.u8[7] << 4) + ((rx_frame.data.u8[6] & 0xF0) >> 4));
+        if (BMS_voltage_intermediate > 0xFFC) // 0xFFD not measurable, 0xFFE init, 0xFFF error
+          BMS_voltage_intermediate = 2000;
       }
       break;
     case BMS_34: {
@@ -844,7 +849,7 @@ void MebBattery::transmit_can(unsigned long currentMillis) {
 
       // Set the link voltage back to 0, so that when the BMS comes back, it
       // doesn't immediately skip the precharge.
-      BMS_voltage_intermediate = 0;
+      BMS_voltage_intermediate = 2000;
       datalayer_extended.meb.BMS_voltage_intermediate_dV = 0;
 
       // Reset the HV requested state so that we don't skip the precharge.
@@ -1002,12 +1007,18 @@ void MebBattery::transmit_can(unsigned long currentMillis) {
     Motor_54_frame.data.u8[1] = ((Motor_54_frame.data.u8[1] & 0xF0) | counter_100ms);
     Motor_54_frame.data.u8[0] = vw_crc_calc(Motor_54_frame.data.u8, Motor_54_frame.DLC, Motor_54_frame.ID);
 
+    Motor_EV_01_frame.data.u8[1] = ((Motor_EV_01_frame.data.u8[1] & 0xF0) | counter_100ms);
+    Motor_EV_01_frame.data.u8[0] = vw_crc_calc(Motor_EV_01_frame.data.u8, Motor_EV_01_frame.DLC, Motor_EV_01_frame.ID);
+
     counter_100ms = (counter_100ms + 1) % 16;  //Goes from 0-1-2-3...15-0-1-2-3..
     transmit_can_frame(&HVK_01_frame);
     transmit_can_frame(&HVLM_14_frame);
     transmit_can_frame(&Klemmen_Status_01_frame);
     transmit_can_frame(&Motor_14_frame);
     transmit_can_frame(&Motor_54_frame);
+    if (active_model == MebModel::MQBEvo_BMC) {
+      transmit_can_frame(&Motor_EV_01_frame);
+    }
   }
   //Send 200ms message
   if (currentMillis - previousMillis200ms >= INTERVAL_200_MS) {
@@ -1076,6 +1087,9 @@ void MebBattery::transmit_can(unsigned long currentMillis) {
         poll_pid = PID_ALLOWED_DISCHARGE_POWER;
         break;
       case PID_ALLOWED_DISCHARGE_POWER:
+        poll_pid = PID_SOH;
+        break;
+      case PID_SOH:
         poll_pid = PID_CELLVOLTAGE_CELL_1;  // Start polling cell voltages
         break;
       // Cell Voltage Cases.
@@ -1228,7 +1242,7 @@ void MebBattery::handle_basic_settings(unsigned long currentMillis) {
   switch (basic_settings_state) {
     case BasicSettingsState::SEND_EXT_SESSION: {
       // Step 1: switch to extended diagnostic session (10 03)
-      uint8_t payload[2] = {DiagnosticSessionControl, 0x40};
+      uint8_t payload[2] = {DiagnosticSessionControl, ExtendedSession};
       isotp_send(payload, sizeof(payload));
       uds_request_pending = true;
       uds_request_timestamp = currentMillis;
@@ -1296,7 +1310,7 @@ void MebBattery::uds_response_handler(uint8_t *data, int len, enum isotp_tatype 
         // This is independent of any higher-level state machine.
         security_access_seed = ((uint32_t)data[2] << 24) | ((uint32_t)data[3] << 16) |
                            ((uint32_t)data[4] << 8) | data[5];
-        uint32_t key = security_access_seed + 0x4E87u;
+        uint32_t key = security_access_seed + security_login_key;
         uint8_t key_payload[6] = {SecurityAccess, 0x04,
                                   (uint8_t)(key >> 24), (uint8_t)(key >> 16),
                                   (uint8_t)(key >> 8),  (uint8_t)(key & 0xFF)};
@@ -1373,6 +1387,10 @@ void MebBattery::uds_response_handler(uint8_t *data, int len, enum isotp_tatype 
         case PID_SOC:
           if (len < 4) break;
           battery_soc_polled = data[3] * 4;  // 135*4 = 54.0%
+          break;
+        case PID_SOH:
+          if (len < 5) break;
+          battery_soh_polled = ((data[3] << 8) | data[4]);
           break;
         case PID_VOLTAGE:
           if (len < 5) break;
@@ -1613,6 +1631,7 @@ void MebBattery::setup(void) {  // Performs one time setup at startup
     datalayer.battery.info.max_design_voltage_dV = MAX_PACK_VOLTAGE_96S_DV;
     datalayer.battery.info.min_design_voltage_dV = MIN_PACK_VOLTAGE_96S_DV;
     nof_cells_determined = true;
+    security_login_key = 20104; //correct key for MQB Evo
   }
 
   isotp_init(ISO_Hybrid_01_Req_FD);

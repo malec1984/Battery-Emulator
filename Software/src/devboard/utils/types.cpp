@@ -19,7 +19,7 @@ std::string getBMSStatus(system_status_enum status) {
       return "UNKNOWN";
   }
 }
-#ifdef HW_LILYGO2CAN
+#if defined(HW_LILYGO2CAN) || defined(HW_WAVESHARE_POE_8CH)
 GPIOOPT1 user_selected_gpioopt1 = GPIOOPT1::DEFAULT_OPT;
 #endif
 GPIOOPT2 user_selected_gpioopt2 = GPIOOPT2::DEFAULT_OPT_BMS_POWER_18;

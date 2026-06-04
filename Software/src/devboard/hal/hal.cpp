@@ -26,6 +26,9 @@ void init_hal() {
 #elif defined(HW_DEVKIT)
 #include "hw_devkit.h"
   esp32hal = new DevKitHal();
+#elif defined(HW_WAVESHARE_POE_8CH)
+#include "hw_waveshare_8ch_poe.h"
+  esp32hal = new WavesharePoE8ChHal();
 #else
 #error "No HW defined."
 #endif
