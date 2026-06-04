@@ -7,8 +7,8 @@
 #include "../../src/communication/can/CanReceiver.h"
 #include "../../src/communication/can/comm_can.h"
 #include "../../src/devboard/utils/types.h"
-#include "../lib/can_isotp/isotp_class.h"
-#include "../lib/can_isotp/uds.h"
+#include "../lib/uds_isotp/isotp.h"
+#include "../lib/uds_isotp/uds.h"
 
 // Abstract base class for batteries using the CAN bus
 class CanBattery : public Battery, Transmitter, CanReceiver {
