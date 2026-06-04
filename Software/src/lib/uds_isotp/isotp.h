@@ -1,15 +1,18 @@
-#ifndef ISOTP_CLASS_H
-#define ISOTP_CLASS_H
+#ifndef ISOTP_H
+#define ISOTP_H
 
 #include <stdint.h>
 #include "isotp_config.h"
 
-// Target address type — kept compatible with the original C isotp.h enum values.
-// Do not include both isotp.h and isotp_class.h in the same translation unit;
-// prefer isotp_class.h for C++ code.
 enum isotp_tatype {
   ISOTP_TATYPE_PHYSICAL = 0,
   ISOTP_TATYPE_FUNCTIONAL,
+};
+
+// Addressing mode (ISO 15765-2 §9).
+enum isotp_addrmode {
+  ISOTP_ADDRMODE_NORMAL   = 0,  // normal addressing — no extra address byte
+  ISOTP_ADDRMODE_EXTENDED = 1,  // extended addressing — N_TAext prepended to every frame
 };
 
 /**
@@ -28,8 +31,19 @@ enum isotp_tatype {
  */
 class IsoTp {
  public:
-  /** Initialise the instance. Must be called once before any other method. */
-  void isotp_init(uint32_t tx_id);
+  /**
+   * Initialise the instance. Must be called once before any other method.
+   *
+   * @param tx_id      CAN ID used for all transmitted frames.
+   * @param addrmode   ISOTP_ADDRMODE_NORMAL (default) or ISOTP_ADDRMODE_EXTENDED.
+   * @param tx_addr    N_TAext byte prepended to TX frames (extended mode only).
+   * @param rx_addr    Expected N_TAext byte on RX frames; frames with a different
+   *                   value are silently discarded (extended mode only).
+   */
+  void isotp_init(uint32_t tx_id,
+                  isotp_addrmode addrmode = ISOTP_ADDRMODE_NORMAL,
+                  uint8_t tx_addr = 0x00,
+                  uint8_t rx_addr = 0x00);
 
   /** Enqueue a message for transmission (up to CONFIG_ISOTP_MAX_MSG_LENGTH bytes). */
   void isotp_send(uint8_t* data, int len);
@@ -69,6 +83,11 @@ class IsoTp {
   uint32_t _rxtimer = 0;
   uint32_t _txtimer = 0;
   uint32_t _tx_id = 0;
+  isotp_addrmode _addrmode = ISOTP_ADDRMODE_NORMAL;
+  uint8_t _tx_addr = 0;
+  uint8_t _rx_addr = 0;
+
+  uint8_t addr_off() const { return (_addrmode == ISOTP_ADDRMODE_EXTENDED) ? 1 : 0; }
 
   void send_fc(uint8_t flowstatus);
   void rcv_fc(uint8_t* can_data, uint8_t can_dlc);
@@ -80,4 +99,4 @@ class IsoTp {
   void do_send_cf();
 };
 
-#endif  // ISOTP_CLASS_H
+#endif  // ISOTP_H

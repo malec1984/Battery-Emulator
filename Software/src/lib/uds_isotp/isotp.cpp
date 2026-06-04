@@ -1,5 +1,5 @@
-#include <string.h>
-#include "isotp_class.h"
+﻿#include <string.h>
+#include "isotp.h"
 
 /* PCI – Protocol Control Information */
 #define N_PCI_SF 0x00 /* single frame      */
@@ -31,23 +31,26 @@ enum {
 // ---------------------------------------------------------------------------
 
 void IsoTp::send_fc(uint8_t flowstatus) {
+  uint8_t off = addr_off();
   uint8_t can_data[8] = {0};
-  can_data[0] = N_PCI_FC | flowstatus;
-  can_data[1] = _rxfc.bs;
-  can_data[2] = _rxfc.stmin;
-  memset(&can_data[3], CONFIG_ISOTP_TX_PADDING_BYTE, 5);
+  if (off) can_data[0] = _tx_addr;
+  can_data[off + 0] = N_PCI_FC | flowstatus;
+  can_data[off + 1] = _rxfc.bs;
+  can_data[off + 2] = _rxfc.stmin;
+  memset(&can_data[off + 3], CONFIG_ISOTP_TX_PADDING_BYTE, 8 - off - 3);
   on_isotp_can_tx(_tx_id, can_data, 8);
   _rx.bs = 0;
   _rxtimer = CONFIG_ISOTP_CR_TIMEOUT;
 }
 
 void IsoTp::rcv_fc(uint8_t* can_data, uint8_t can_dlc) {
+  uint8_t off = addr_off();
   if (_tx.state == ISOTP_WAIT_FC || _tx.state == ISOTP_WAIT_FIRST_FC) {
     _txtimer = 0;
-    if (can_dlc >= FC_CONTENT_SZ) {
+    if (can_dlc >= FC_CONTENT_SZ + off) {
       if (_tx.state == ISOTP_WAIT_FIRST_FC) {
-        _txfc.bs    = can_data[1];
-        _txfc.stmin = can_data[2];
+        _txfc.bs    = can_data[off + 1];
+        _txfc.stmin = can_data[off + 2];
         if ((_txfc.stmin > 0x7F) && ((_txfc.stmin < 0xF1) || (_txfc.stmin > 0xF9))) {
           _txfc.stmin = 0x7F;
         }
@@ -57,7 +60,7 @@ void IsoTp::rcv_fc(uint8_t* can_data, uint8_t can_dlc) {
         }
         _tx.state = ISOTP_WAIT_FC;
       }
-      switch (can_data[0] & 0x0F) {
+      switch (can_data[off] & 0x0F) {
         case ISOTP_FC_CTS:
           _tx.bs    = 0;
           _tx_wft   = 0;
@@ -83,18 +86,19 @@ void IsoTp::rcv_fc(uint8_t* can_data, uint8_t can_dlc) {
 }
 
 void IsoTp::rcv_sf(uint8_t* can_data, uint8_t can_dlc) {
+  uint8_t off = addr_off();
   uint8_t sf_pci_size = SF_PCI_SZ;
   _rxtimer  = 0;
   _rx.state = ISOTP_IDLE;
-  _rx.len   = (can_data[0] & 0x0F);
+  _rx.len   = (can_data[off] & 0x0F);
   if (_rx.len == 0) {
-    /* ISO 15765-2 CAN FD: byte 0 = PCI, byte 1 = length */
+    /* ISO 15765-2 CAN FD: PCI byte = 0x00, next byte = length */
     sf_pci_size = SF_PCI_SZ + 1;
-    _rx.len     = can_data[1];
+    _rx.len     = can_data[off + 1];
   }
-  if (0 < _rx.len && _rx.len <= can_dlc - sf_pci_size) {
+  if (0 < _rx.len && _rx.len <= can_dlc - sf_pci_size - off) {
     _rx.idx = 0;
-    for (int i = sf_pci_size; i < _rx.len + sf_pci_size; i++) {
+    for (int i = off + sf_pci_size; i < off + sf_pci_size + _rx.len; i++) {
       _rx.buf[_rx.idx++] = can_data[i];
     }
     on_isotp_rx_complete(_rx.buf, _rx.len, _tatype);
@@ -102,14 +106,16 @@ void IsoTp::rcv_sf(uint8_t* can_data, uint8_t can_dlc) {
 }
 
 void IsoTp::rcv_ff(uint8_t* can_data, uint8_t can_dlc) {
+  uint8_t off = addr_off();
   _rxtimer  = 0;
   _rx.state = ISOTP_IDLE;
-  _rx.len   = (can_data[0] & 0x0F) << 8;
-  _rx.len  += can_data[1];
-  if (_rx.len >= 8) {
+  _rx.len   = (can_data[off] & 0x0F) << 8;
+  _rx.len  += can_data[off + 1];
+  /* FF_DL must exceed the maximum SF payload for this addressing mode */
+  if (_rx.len > 7 - off) {
     if (_rx.len <= CONFIG_ISOTP_MAX_MSG_LENGTH) {
       _rx.idx = 0;
-      for (int i = FF_PCI_SZ; i < can_dlc; i++) {
+      for (int i = off + FF_PCI_SZ; i < can_dlc; i++) {
         _rx.buf[_rx.idx++] = can_data[i];
       }
       _rx.sn    = 1;
@@ -122,14 +128,15 @@ void IsoTp::rcv_ff(uint8_t* can_data, uint8_t can_dlc) {
 }
 
 void IsoTp::rcv_cf(uint8_t* can_data, uint8_t can_dlc) {
+  uint8_t off = addr_off();
   if (_rx.state == ISOTP_WAIT_DATA) {
     _rxtimer = 0;
-    if ((can_data[0] & 0x0F) == _rx.sn) {
+    if ((can_data[off] & 0x0F) == _rx.sn) {
       _rx.sn++;
       if (_rx.sn > 15) {
         _rx.sn = 0;
       }
-      for (int i = N_PCI_SZ; i < can_dlc && _rx.idx < _rx.len; i++) {
+      for (int i = off + N_PCI_SZ; i < can_dlc && _rx.idx < _rx.len; i++) {
         _rx.buf[_rx.idx++] = can_data[i];
       }
       if (_rx.idx < _rx.len) {
@@ -149,23 +156,27 @@ void IsoTp::rcv_cf(uint8_t* can_data, uint8_t can_dlc) {
 }
 
 void IsoTp::do_send_sf() {
+  uint8_t off = addr_off();
   uint8_t can_data[8] = {0};
-  can_data[0] = N_PCI_SF | _tx.len;
+  if (off) can_data[0] = _tx_addr;
+  can_data[off] = N_PCI_SF | _tx.len;
   for (int i = 0; i < _tx.len; i++) {
-    can_data[SF_PCI_SZ + i] = _tx.buf[_tx.idx++];
+    can_data[off + SF_PCI_SZ + i] = _tx.buf[_tx.idx++];
   }
-  memset(&can_data[SF_PCI_SZ + _tx.len], CONFIG_ISOTP_TX_PADDING_BYTE,
-         8 - SF_PCI_SZ - _tx.len);
+  memset(&can_data[off + SF_PCI_SZ + _tx.len], CONFIG_ISOTP_TX_PADDING_BYTE,
+         8 - off - SF_PCI_SZ - _tx.len);
   on_isotp_can_tx(_tx_id, can_data, 8);
   _tx.state = ISOTP_IDLE;
 }
 
 void IsoTp::do_send_ff() {
+  uint8_t off = addr_off();
   uint8_t can_data[8] = {0};
-  can_data[0] = N_PCI_FF | ((_tx.len >> 8) & 0x0F);
-  can_data[1] = _tx.len & 0xFF;
-  for (int i = 0; i < 6; i++) {
-    can_data[FF_PCI_SZ + i] = _tx.buf[_tx.idx++];
+  if (off) can_data[0] = _tx_addr;
+  can_data[off + 0] = N_PCI_FF | ((_tx.len >> 8) & 0x0F);
+  can_data[off + 1] = _tx.len & 0xFF;
+  for (int i = 0; i < 6 - off; i++) {
+    can_data[off + FF_PCI_SZ + i] = _tx.buf[_tx.idx++];
   }
   on_isotp_can_tx(_tx_id, can_data, 8);
   _tx.sn    = 1;
@@ -174,19 +185,21 @@ void IsoTp::do_send_ff() {
 }
 
 void IsoTp::do_send_cf() {
+  uint8_t off    = addr_off();
   uint8_t remain = static_cast<uint8_t>(_tx.len - _tx.idx);
-  uint8_t num    = (remain < 7) ? remain : 7;
+  uint8_t num    = (remain < 7u - off) ? remain : 7u - off;
   uint8_t can_data[8] = {0};
-  can_data[0] = N_PCI_CF | _tx.sn++;
+  if (off) can_data[0] = _tx_addr;
+  can_data[off] = N_PCI_CF | _tx.sn++;
   if (_tx.sn > 15) {
     _tx.sn = 0;
   }
   _tx.bs++;
   for (int i = 0; i < num; i++) {
-    can_data[N_PCI_SZ + i] = _tx.buf[_tx.idx++];
+    can_data[off + N_PCI_SZ + i] = _tx.buf[_tx.idx++];
   }
-  if (num < 7) {
-    memset(&can_data[N_PCI_SZ + num], CONFIG_ISOTP_TX_PADDING_BYTE, 7 - num);
+  if (num < 7u - off) {
+    memset(&can_data[off + N_PCI_SZ + num], CONFIG_ISOTP_TX_PADDING_BYTE, 7u - off - num);
   }
   on_isotp_can_tx(_tx_id, can_data, 8);
   if (_tx.idx < _tx.len) {
@@ -205,7 +218,7 @@ void IsoTp::do_send_cf() {
 // Public API
 // ---------------------------------------------------------------------------
 
-void IsoTp::isotp_init(uint32_t tx_id) {
+void IsoTp::isotp_init(uint32_t tx_id, isotp_addrmode addrmode, uint8_t tx_addr, uint8_t rx_addr) {
   _rx.state   = ISOTP_IDLE;
   _tx.state   = ISOTP_IDLE;
   _rxfc.bs    = CONFIG_ISOTP_BS;
@@ -213,15 +226,19 @@ void IsoTp::isotp_init(uint32_t tx_id) {
   _rxtimer    = 0;
   _txtimer    = 0;
   _tx_id      = tx_id;
+  _addrmode   = addrmode;
+  _tx_addr    = tx_addr;
+  _rx_addr    = rx_addr;
 }
 
 void IsoTp::isotp_send(uint8_t* data, int len) {
+  uint8_t off = addr_off();
   if (_tx.state == ISOTP_IDLE && len <= CONFIG_ISOTP_MAX_MSG_LENGTH) {
     memcpy(_tx.buf, data, len);
     _tx.state = ISOTP_SENDING;
     _tx.len   = len;
     _tx.idx   = 0;
-    if (len < 8) {
+    if (len <= 7 - off) {
       do_send_sf();
     } else {
       do_send_ff();
@@ -230,7 +247,10 @@ void IsoTp::isotp_send(uint8_t* data, int len) {
 }
 
 void IsoTp::isotp_receive(uint8_t* can_data, uint8_t can_dlc, isotp_tatype tatype) {
-  uint8_t n_pci_type = can_data[0] & 0xF0;
+  uint8_t off = addr_off();
+  /* in extended mode, silently discard frames not addressed to us */
+  if (off && can_data[0] != _rx_addr) return;
+  uint8_t n_pci_type = can_data[off] & 0xF0;
   /* half-duplex: only handle FC when RX is idle, other frames when TX is idle */
   if ((n_pci_type == N_PCI_FC && _rx.state == ISOTP_IDLE) ||
       (n_pci_type != N_PCI_FC && _tx.state == ISOTP_IDLE)) {
