@@ -1,7 +1,6 @@
 #ifndef _MEB_HTML_H
 #define _MEB_HTML_H
 
-#include <LittleFS.h>
 #include <string.h>
 #include "../datalayer/datalayer.h"
 #include "../datalayer/datalayer_extended.h"
@@ -9,44 +8,7 @@
 
 class MebHtmlRenderer : public BatteryHtmlRenderer {
  public:
-  String get_DTC_description(uint32_t code) {
-#ifndef SMALL_FLASH_DEVICE
-    if (!LittleFS.begin(false)) {
-      return "N/A";
-    }
-    File f = LittleFS.open("/meb_dtc.bin", "r");
-    if (!f) {
-      return "N/A";
-    }
-    static const size_t RECORD_SIZE = 148;
-    static const size_t S_DSC_OFFSET = 4;
-    static const size_t L_DSC_OFFSET = 56;  // 4 + 52
-    int lo = 0;
-    int hi = (int)(f.size() / RECORD_SIZE) - 1;
-    uint8_t buf[RECORD_SIZE];
-    while (lo <= hi) {
-      int mid = (lo + hi) / 2;
-      f.seek((size_t)mid * RECORD_SIZE);
-      f.read(buf, RECORD_SIZE);
-      uint32_t c;
-      memcpy(&c, buf, sizeof(uint32_t));
-      if (c == code) {
-        f.close();
-        return String(reinterpret_cast<char*>(buf + L_DSC_OFFSET)) + "<br />" +
-               String(reinterpret_cast<char*>(buf + S_DSC_OFFSET));
-      }
-      if (c < code) {
-        lo = mid + 1;
-      } else {
-        hi = mid - 1;
-      }
-    }
-    f.close();
-    return "Unknown";
-#else
-    return "N/A";
-#endif
-  }
+
 
   String get_status_html() {
     String content;
@@ -395,11 +357,6 @@ class MebHtmlRenderer : public BatteryHtmlRenderer {
           statusColor = "#d32f2f";
         }
 
-        String description = get_DTC_description(code);
-        if (description.length() == 0) {
-          description = "Unknown";
-        }
-
         content += "<tr>";
         content +=
             "<td style='padding: 12px 15px; border-top: 1px solid #e0e0e0; font-family: monospace; font-size: 1.1em; "
@@ -407,14 +364,15 @@ class MebHtmlRenderer : public BatteryHtmlRenderer {
             String(dtcStr) + "</td>";
         content += "<td style='padding: 12px 15px; border-top: 1px solid #e0e0e0; color: " + statusColor +
                   "; font-weight: 500;'>" + statusStr + "</td>";
-        content += "<td style='padding: 12px 15px; border-top: 1px solid #e0e0e0; font-size: 0.95em; color: #ddd;'>" +
-                  description + "</td>";
+        content += "<td data-dtc-code='" + String(code) + "' style='padding: 12px 15px; border-top: 1px solid #e0e0e0; font-size: 0.95em; color: #ddd;'>Unknown</td>";
         content += "</tr>";
       }
 
       content += "</tbody>";
       content += "</table>";
       content += "</div>";
+
+      content += get_dtc_json_loader_html(GITHUB_RAW_BASE_URL, "vag_meb_dtc.json");
     }
 
     content += "</div>";
