@@ -21,6 +21,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_DIR = os.path.dirname(SCRIPT_DIR)
 
 BIN_PATH = os.path.join(PROJECT_DIR, "data", "meb_dtc.bin")
+JSON_UNIFIED_PATH = os.path.join(PROJECT_DIR, "data", "vag_meb_dtc.json")
 
 S_DSC_SIZE = 52  # 51 chars max + null terminator
 L_DSC_SIZE = 92  # 91 chars max + null terminator
@@ -58,6 +59,7 @@ def main():
                 merged[code] = record
 
     data = sorted(merged.values(), key=lambda r: r["code"])
+    open(JSON_UNIFIED_PATH, "w", encoding="utf-8").write(json.dumps(data, indent=2))
 
     with open(BIN_PATH, "wb") as f:
         for record in data:
