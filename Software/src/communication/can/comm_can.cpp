@@ -253,6 +253,9 @@ bool init_CAN() {
 
     // ListenOnly / Normal20B / NormalFDs
     settings2517->mRequestedMode = use_canfd_as_can ? ACAN2517FDSettings::Normal20B : ACAN2517FDSettings::NormalFD;
+    // limit retransmissions to avoid bus blocking.
+    settings2517->mControllerTransmitFIFORetransmissionAttempts = ACAN2517FDSettings::ThreeAttempts;
+    settings2517->mControllerTXQBufferRetransmissionAttempts = ACAN2517FDSettings::ThreeAttempts;
 
     const uint32_t errorCode2517 = canfd->begin(*settings2517, [] { canfd->isr(); });
     canfd->poll();
@@ -528,7 +531,6 @@ void stop_can() {
 
   if (canfd) {
     canfd->end();
-    SPI2517.end();
   }
 }
 
@@ -542,8 +544,8 @@ void restart_can() {
   }
 
   if (canfd) {
-    SPI2517.begin();
     canfd->begin(*settings2517, [] { canfd->isr(); });
+    canfd->poll();
   }
 }
 

@@ -26,15 +26,15 @@ class BatteryHtmlRenderer {
   //   On failure the file picker is revealed so the user can load a local copy.
   static String get_dtc_json_loader_html(const char* base_url = "", const char* filename = "") {
     String s;
-    s += "<div style='margin-top: 15px; padding: 12px; background: #1e1e2e; border: 1px solid #444; border-radius: 8px;'>";
-    s += "<p id='dtcJsonStatus' style='margin: 0 0 8px 0; color: #aaa; font-size: 0.95em;'></p>";
+    s += "<div style='margin-top:15px;padding:12px; background: #1e1e2e; border:1px solid #444; border-radius:8px;'>";
+    s += "<p id='dtcJsonStatus' style='margin: 0 0 8px 0; color: #aaa; font-size:.95em;'></p>";
     s += "<div id='dtcJsonFileContainer' style='display:none;'>";
-    s += "<p style='margin: 4px 0; color: #ccc; font-size: 0.9em;'><strong>Load DTC descriptions from a local JSON file</strong> ";
+    s += "<p style='margin: 4px 0; color: #ccc; font-size:.9em;'><strong>Load DTC descriptions from a local JSON file</strong> ";
     s += "(e.g. <em>";
     s += filename;
     s += "</em>):</p>";
     s += "<input type='file' id='dtcJsonFile' accept='.json' "
-         "style='color: #ccc; background: #2a2a3e; border: 1px solid #555; border-radius: 4px; padding: 4px 8px; cursor: pointer;'>";
+         "style='color: #ccc; background: #2a2a3e; border:1px solid #555; border-radius:4px; padding:4px 8px; cursor: pointer;'>";
     s += "</div>";
     s += "</div>";
 
