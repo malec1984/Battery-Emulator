@@ -1626,6 +1626,7 @@ void MqbEvoBattery::setup(void) {  // Performs one time setup at startup
   datalayer_battery->info.min_design_voltage_dV = MIN_PACK_VOLTAGE_96S_DV;
   nof_cells_determined = true;
   security_login_key = 20104;  //correct key for MQB Evo
+  renderer.dtc_json_filename = "vag_mqb_dtc.json";  // platform-specific DTC descriptions
 
   strncpy(datalayer.system.info.battery_protocol, Name, 63);  // Overwrite the MEB name.
   datalayer.system.info.battery_protocol[63] = '\0';
