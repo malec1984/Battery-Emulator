@@ -3,15 +3,12 @@
 #include "CanBattery.h"
 #include "MEB-HTML.h"
  
-// Runtime-selectable MEB model/variant.
-// Stored in NVM key "MEBMODEL": 0=Auto, 1=MEB BMC, 2=MQB Evo BMC
-enum class MebModel : uint8_t {
-  Auto = 0,
-  MEB_BMC = 1,
-  MQBEvo_BMC = 2,
+// VW Group platform implemented by this battery class. Each platform is exposed as a
+// separate selectable battery type and sets this value in its setup().
+enum class VAGPlatform : uint8_t {
+  MEB = 1,
+  MQB_Evo = 2,
 };
-
-extern uint8_t user_selected_meb_model;
 
 class MebBattery : public CanBattery, public IsoTp {
  public:
@@ -19,7 +16,7 @@ class MebBattery : public CanBattery, public IsoTp {
   MebBattery(DATALAYER_BATTERY_TYPE* datalayer_ptr, DATALAYER_INFO_MEB* extended, CAN_Interface targetCan)
       : CanBattery(targetCan) {
     datalayer_battery = datalayer_ptr;
-
+    datalayer_meb = extended;
     BMS_voltage = 0;
   }
   // Use the default constructor to create the first or single battery.
@@ -44,7 +41,7 @@ class MebBattery : public CanBattery, public IsoTp {
 
   BatteryHtmlRenderer& get_status_renderer() { return renderer; }
 
- private:
+ protected:
   /* validate crc for some CAN frames */
   uint8_t vw_crc_calc(const uint8_t* inputBytes, uint8_t length, uint32_t address);
   /* send a UDS ReadDataByIdentifier request for poll_pid via ISO-TP and advance poll_pid */
@@ -62,8 +59,7 @@ class MebBattery : public CanBattery, public IsoTp {
   DATALAYER_BATTERY_TYPE* datalayer_battery;
   DATALAYER_INFO_MEB* datalayer_meb;
 
-  MebModel configured_model = MebModel::MEB_BMC;
-  MebModel active_model = MebModel::MEB_BMC;
+  VAGPlatform platform = VAGPlatform::MEB;
 
   static const int MAX_PACK_VOLTAGE_84S_DV = 3528;  //5000 = 500.0V
   static const int MIN_PACK_VOLTAGE_84S_DV = 2520;
@@ -645,6 +641,16 @@ class MebBattery : public CanBattery, public IsoTp {
                                  .ID = Motor_EV_01,  // content
                                  .data = {0x00, 0x80, 0x12, 0x00, 0x00, 0x00, 0x30, 0x96}};
   uint32_t can_msg_received = 0;
+};
+
+// MQB Evo shares all of the MEB CAN handling; only the one-time setup differs.
+class MqbEvoBattery : public MebBattery {
+ public:
+  MqbEvoBattery() = default;
+  MqbEvoBattery(DATALAYER_BATTERY_TYPE* datalayer_ptr, DATALAYER_INFO_MEB* extended, CAN_Interface targetCan)
+      : MebBattery(datalayer_ptr, extended, targetCan) {}
+  static constexpr const char* Name = "Volkswagen Group MQB Evo 2024+ via CAN-FD";
+  void setup(void) override;
 };
 
 #endif

@@ -214,7 +214,7 @@ void MebBattery::
 
   datalayer_battery->status.current_dA = (BMS_current - 16300);  // 0.1 * 10
 
-  if (nof_cells_determined && active_model == MebModel::MEB_BMC) {
+  if (nof_cells_determined && platform == VAGPlatform::MEB) {
     datalayer_battery->info.total_capacity_Wh =
         ((float)datalayer_battery->info.number_of_cells) * 3.67f * ((float)BMS_capacity_ah) * 0.2f * 1.02564f;
     // The factor 1.02564 = 1/0.975 is to correct for bottom 2.5% which is reported by the remaining_capacity_Wh,
@@ -232,7 +232,7 @@ void MebBattery::
       datalayer_battery->status.soh_pptt = 10000 * datalayer_battery->info.total_capacity_Wh / (Wh_max * 1.02564f);
     if (battery_soh_polled > 0)
       datalayer_battery->status.soh_pptt = battery_soh_polled; // If the SoH PID is available then overwrite the calculated SoH.
-  } else if (active_model == MebModel::MQBEvo_BMC) {
+  } else if (platform == VAGPlatform::MQB_Evo) {
     datalayer_battery->info.total_capacity_Wh = BMS_max_usable_batt_energy_Wh;
     if (battery_soh_polled > 0) // This will always be available on MQB Evo.
       datalayer_battery->status.soh_pptt = battery_soh_polled;
@@ -255,9 +255,9 @@ void MebBattery::
   datalayer_battery->status.temperature_max_dC = (battery_max_temp * 10) / 64;
 
   //Map all cell voltages to the global array
-  if (active_model == MebModel::MQBEvo_BMC) {
+  if (platform == VAGPlatform::MQB_Evo) {
     memcpy(datalayer_battery->status.cell_voltages_mV, cellvoltages, datalayer_battery->info.number_of_cells * sizeof(uint16_t));
-  } else if (active_model == MebModel::MEB_BMC) {
+  } else if (platform == VAGPlatform::MEB) {
     memcpy(datalayer_battery->status.cell_voltages_mV, cellvoltages_polled, datalayer_battery->info.number_of_cells * sizeof(uint16_t));
   }
 
@@ -273,58 +273,58 @@ void MebBattery::
   }
 
   // Update webserver datalayer for "More battery info" page
-  datalayer_extended.meb.SDSW = service_disconnect_switch_missing;
-  datalayer_extended.meb.pilotline = pilotline_open;
-  datalayer_extended.meb.transportmode = transportation_mode_active;
-  datalayer_extended.meb.componentprotection = component_protection_active;
-  datalayer_extended.meb.shutdown_active = shutdown_active;
-  datalayer_extended.meb.HVIL = BMS_HVIL_status;
-  datalayer_extended.meb.BMS_mode = BMS_mode;
-  datalayer_extended.meb.battery_diagnostic = battery_diagnostic;
-  datalayer_extended.meb.status_HV_line = status_HV_line;
-  datalayer_extended.meb.BMS_fault_performance = BMS_fault_performance;
-  datalayer_extended.meb.BMS_fault_emergency_shutdown_crash = BMS_fault_emergency_shutdown_crash;
-  datalayer_extended.meb.BMS_error_shutdown_request = BMS_error_shutdown_request;
-  datalayer_extended.meb.BMS_error_shutdown = BMS_error_shutdown;
-  datalayer_extended.meb.BMS_welded_contactors_status = BMS_welded_contactors_status;
+  datalayer_meb->SDSW = service_disconnect_switch_missing;
+  datalayer_meb->pilotline = pilotline_open;
+  datalayer_meb->transportmode = transportation_mode_active;
+  datalayer_meb->componentprotection = component_protection_active;
+  datalayer_meb->shutdown_active = shutdown_active;
+  datalayer_meb->HVIL = BMS_HVIL_status;
+  datalayer_meb->BMS_mode = BMS_mode;
+  datalayer_meb->battery_diagnostic = battery_diagnostic;
+  datalayer_meb->status_HV_line = status_HV_line;
+  datalayer_meb->BMS_fault_performance = BMS_fault_performance;
+  datalayer_meb->BMS_fault_emergency_shutdown_crash = BMS_fault_emergency_shutdown_crash;
+  datalayer_meb->BMS_error_shutdown_request = BMS_error_shutdown_request;
+  datalayer_meb->BMS_error_shutdown = BMS_error_shutdown;
+  datalayer_meb->BMS_welded_contactors_status = BMS_welded_contactors_status;
 
-  datalayer_extended.meb.warning_support = warning_support;
-  datalayer_extended.meb.BMS_status_voltage_free = BMS_status_voltage_free;
-  datalayer_extended.meb.BMS_OBD_MIL = BMS_OBD_MIL;
-  datalayer_extended.meb.BMS_error_status = BMS_error_status;
-  datalayer_extended.meb.BMS_error_lamp_req = BMS_error_lamp_req;
-  datalayer_extended.meb.BMS_warning_lamp_req = BMS_warning_lamp_req;
-  datalayer_extended.meb.BMS_Kl30c_Status = BMS_Kl30c_Status;
-  datalayer_extended.meb.BMS_voltage_intermediate_dV = (BMS_voltage_intermediate - 2000) * 10 / 2;
-  datalayer_extended.meb.BMS_voltage_dV = BMS_voltage * 10 / 4;
-  datalayer_extended.meb.isolation_resistance = isolation_resistance_kOhm * 5;
-  datalayer_extended.meb.battery_heating = battery_heating_active;
-  datalayer_extended.meb.rt_overcurrent = realtime_overcurrent_monitor;
-  datalayer_extended.meb.rt_CAN_fault = realtime_CAN_communication_fault;
-  datalayer_extended.meb.rt_overcharge = realtime_overcharge_warning;
-  datalayer_extended.meb.rt_SOC_high = realtime_SOC_too_high;
-  datalayer_extended.meb.rt_SOC_low = realtime_SOC_too_low;
-  datalayer_extended.meb.rt_SOC_jumping = realtime_SOC_jumping_warning;
-  datalayer_extended.meb.rt_temp_difference = realtime_temperature_difference_warning;
-  datalayer_extended.meb.rt_cell_overtemp = realtime_cell_overtemperature_warning;
-  datalayer_extended.meb.rt_cell_undertemp = realtime_cell_undertemperature_warning;
-  datalayer_extended.meb.rt_battery_overvolt = realtime_battery_overvoltage_warning;
-  datalayer_extended.meb.rt_battery_undervol = realtime_battery_undervoltage_warning;
-  datalayer_extended.meb.rt_cell_overvolt = realtime_cell_overvoltage_warning;
-  datalayer_extended.meb.rt_cell_undervol = realtime_cell_undervoltage_warning;
-  datalayer_extended.meb.rt_cell_imbalance = realtime_cell_imbalance_warning;
-  datalayer_extended.meb.rt_battery_unathorized = realtime_warning_battery_unathorized;
-  if (balancing_active == 1 && datalayer_extended.meb.balancing_active != 1) {
+  datalayer_meb->warning_support = warning_support;
+  datalayer_meb->BMS_status_voltage_free = BMS_status_voltage_free;
+  datalayer_meb->BMS_OBD_MIL = BMS_OBD_MIL;
+  datalayer_meb->BMS_error_status = BMS_error_status;
+  datalayer_meb->BMS_error_lamp_req = BMS_error_lamp_req;
+  datalayer_meb->BMS_warning_lamp_req = BMS_warning_lamp_req;
+  datalayer_meb->BMS_Kl30c_Status = BMS_Kl30c_Status;
+  datalayer_meb->BMS_voltage_intermediate_dV = (BMS_voltage_intermediate - 2000) * 10 / 2;
+  datalayer_meb->BMS_voltage_dV = BMS_voltage * 10 / 4;
+  datalayer_meb->isolation_resistance = isolation_resistance_kOhm * 5;
+  datalayer_meb->battery_heating = battery_heating_active;
+  datalayer_meb->rt_overcurrent = realtime_overcurrent_monitor;
+  datalayer_meb->rt_CAN_fault = realtime_CAN_communication_fault;
+  datalayer_meb->rt_overcharge = realtime_overcharge_warning;
+  datalayer_meb->rt_SOC_high = realtime_SOC_too_high;
+  datalayer_meb->rt_SOC_low = realtime_SOC_too_low;
+  datalayer_meb->rt_SOC_jumping = realtime_SOC_jumping_warning;
+  datalayer_meb->rt_temp_difference = realtime_temperature_difference_warning;
+  datalayer_meb->rt_cell_overtemp = realtime_cell_overtemperature_warning;
+  datalayer_meb->rt_cell_undertemp = realtime_cell_undertemperature_warning;
+  datalayer_meb->rt_battery_overvolt = realtime_battery_overvoltage_warning;
+  datalayer_meb->rt_battery_undervol = realtime_battery_undervoltage_warning;
+  datalayer_meb->rt_cell_overvolt = realtime_cell_overvoltage_warning;
+  datalayer_meb->rt_cell_undervol = realtime_cell_undervoltage_warning;
+  datalayer_meb->rt_cell_imbalance = realtime_cell_imbalance_warning;
+  datalayer_meb->rt_battery_unathorized = realtime_warning_battery_unathorized;
+  if (balancing_active == 1 && datalayer_meb->balancing_active != 1) {
     datalayer_battery->status.balancing_status = BALANCING_STATUS_ACTIVE;
     set_event_latched(EVENT_BALANCING_START, 0);
   }
-  if (balancing_active == 2 && datalayer_extended.meb.balancing_active == 1) {
+  if (balancing_active == 2 && datalayer_meb->balancing_active == 1) {
     datalayer_battery->status.balancing_status = BALANCING_STATUS_READY;
     set_event(EVENT_BALANCING_END, 0);
   }
-  datalayer_extended.meb.balancing_active = balancing_active;
-  datalayer_extended.meb.balancing_request = balancing_request;
-  datalayer_extended.meb.charging_active = charging_active;
+  datalayer_meb->balancing_active = balancing_active;
+  datalayer_meb->balancing_request = balancing_request;
+  datalayer_meb->charging_active = charging_active;
 }
 
 void MebBattery::handle_incoming_can_frame(CAN_frame rx_frame) {
@@ -419,7 +419,7 @@ void MebBattery::handle_incoming_can_frame(CAN_frame rx_frame) {
       status_valve_1 = (rx_frame.data.u8[3] & 0x1C) >> 2;
       status_valve_2 = (rx_frame.data.u8[3] & 0xE0) >> 5;
       temperature_request = (((rx_frame.data.u8[2] & 0x03) << 1) | rx_frame.data.u8[1] >> 7);
-      datalayer_extended.meb.battery_temperature_dC = rx_frame.data.u8[5] * 5 - 400;  //*0,5 -40
+      datalayer_meb->battery_temperature_dC = rx_frame.data.u8[5] * 5 - 400;  //*0,5 -40
       target_flow_temperature_C = rx_frame.data.u8[6];                                //*0,5 -40
       return_temperature_C = rx_frame.data.u8[7];                                     //*0,5 -40
       break;
@@ -455,7 +455,7 @@ void MebBattery::handle_incoming_can_frame(CAN_frame rx_frame) {
       switch (mux) {
         case 0:  // Temperatures 1-56. Value is 0xFD if sensor not present
           for (uint8_t i = 0; i < 56; i++) {
-            datalayer_extended.meb.celltemperature_dC[i] = ((int16_t)rx_frame.data.u8[i + 1] * 5) - 400;
+            datalayer_meb->celltemperature_dC[i] = ((int16_t)rx_frame.data.u8[i + 1] * 5) - 400;
           }
           break;
         // Broadcast cellvoltages are used for MQB Evo BMC
@@ -839,7 +839,7 @@ void MebBattery::transmit_can(unsigned long currentMillis) {
       // Set the link voltage back to 0, so that when the BMS comes back, it
       // doesn't immediately skip the precharge.
       BMS_voltage_intermediate = 2000;
-      datalayer_extended.meb.BMS_voltage_intermediate_dV = 0;
+      datalayer_meb->BMS_voltage_intermediate_dV = 0;
 
       // Reset the HV requested state so that we don't skip the precharge.
       hv_requested = false;
@@ -848,7 +848,7 @@ void MebBattery::transmit_can(unsigned long currentMillis) {
   // Send 10ms CAN Message
   if (currentMillis - previousMillis10ms >= INTERVAL_10_MS) {
     previousMillis10ms = currentMillis;
-    if (active_model == MebModel::MEB_BMC) {
+    if (platform == VAGPlatform::MEB) {
       ESC_51_Auth_frame.data.u8[1] = ((ESC_51_Auth_frame.data.u8[1] & 0xF0) | counter_10ms);
       ESC_51_Auth_frame.data.u8[0] = vw_crc_calc(ESC_51_Auth_frame.data.u8, ESC_51_Auth_frame.DLC, ESC_51_Auth_frame.ID);
 
@@ -912,9 +912,9 @@ void MebBattery::transmit_can(unsigned long currentMillis) {
          (datalayer.battery.status.real_bms_status == BMS_STANDBY &&
           (hv_requested ||
            (datalayer.battery.status.voltage_dV > datalayer.battery.info.min_design_voltage_dV &&
-            datalayer_extended.meb.BMS_voltage_intermediate_dV > 0 &&
+            datalayer_meb->BMS_voltage_intermediate_dV > 0 &&
             labs(((int32_t)datalayer.battery.status.voltage_dV) -
-                 ((int32_t)datalayer_extended.meb.BMS_voltage_intermediate_dV)) < 200))))) {
+                 ((int32_t)datalayer_meb->BMS_voltage_intermediate_dV)) < 200))))) {
       // We are either:
       //  - in BMS_ACTIVE state (contactors closed, normal operation)
       //  - or in BMS_STANDBY state, ready to request HV from the battery (our precharge is within 20V)
@@ -1006,7 +1006,7 @@ void MebBattery::transmit_can(unsigned long currentMillis) {
     transmit_can_frame(&Klemmen_Status_01_frame);
     transmit_can_frame(&Motor_14_frame);
     transmit_can_frame(&Motor_54_frame);
-    if (active_model == MebModel::MQBEvo_BMC) {
+    if (platform == VAGPlatform::MQB_Evo) {
       transmit_can_frame(&Motor_EV_01_frame);
     }
   }
@@ -1080,7 +1080,7 @@ void MebBattery::transmit_can(unsigned long currentMillis) {
         poll_pid = PID_SOH;
         break;
       case PID_SOH:
-        if (active_model == MebModel::MQBEvo_BMC) {
+        if (platform == VAGPlatform::MQB_Evo) {
           poll_pid = PID_SOC; // MQB Evo reads cell voltages directly from BMS_CMC_04;
         } else {
           poll_pid = PID_CELLVOLTAGE_CELL_1;  // Start polling cell voltages
@@ -1166,7 +1166,7 @@ void MebBattery::transmit_can(unsigned long currentMillis) {
     transmit_can_frame(&Reichweite_01_frame);    // Loading profile
     transmit_can_frame(&Systeminfo_01_frame);    // Systeminfo
     transmit_can_frame(&Temperaturen_01_frame);  // Temperature QBit
-    if (active_model == MebModel::MQBEvo_BMC) {
+    if (platform == VAGPlatform::MQB_Evo) {
       transmit_can_frame(&Kombi_02_frame);
     }
     if (basic_settings_state != BasicSettingsState::IDLE) {
@@ -1178,7 +1178,7 @@ void MebBattery::transmit_can(unsigned long currentMillis) {
   static auto last_start_precharging = datalayer.system.info.start_precharging;
   static auto last_hv_requested = hv_requested;
   static auto last_voltage_dV = datalayer.battery.status.voltage_dV;
-  static auto last_BMS_voltage_intermediate_dV = datalayer_extended.meb.BMS_voltage_intermediate_dV;
+  static auto last_BMS_voltage_intermediate_dV = datalayer_meb->BMS_voltage_intermediate_dV;
   static auto last_bms_mode = BMS_mode;
 
   if (last_real_bms_status != datalayer.battery.status.real_bms_status) {
@@ -1202,10 +1202,10 @@ void MebBattery::transmit_can(unsigned long currentMillis) {
     last_voltage_dV = datalayer.battery.status.voltage_dV;
   }
 
-  if (last_BMS_voltage_intermediate_dV != datalayer_extended.meb.BMS_voltage_intermediate_dV) {
+  if (last_BMS_voltage_intermediate_dV != datalayer_meb->BMS_voltage_intermediate_dV) {
     logging.printf("MEB: BMS Voltage intermediate dV %d -> %d\n", last_BMS_voltage_intermediate_dV,
-                   datalayer_extended.meb.BMS_voltage_intermediate_dV);
-    last_BMS_voltage_intermediate_dV = datalayer_extended.meb.BMS_voltage_intermediate_dV;
+                   datalayer_meb->BMS_voltage_intermediate_dV);
+    last_BMS_voltage_intermediate_dV = datalayer_meb->BMS_voltage_intermediate_dV;
   }
 
   if (last_bms_mode != BMS_mode) {
@@ -1473,7 +1473,7 @@ void MebBattery::uds_response_handler(uint8_t *data, int len, enum isotp_tatype 
         default:
           if (len < 5) break;
           if (pid_reply >= PID_TEMP_POINT_1 && pid_reply <= PID_TEMP_POINT_18) {
-            datalayer_extended.meb.temp_points[pid_reply - PID_TEMP_POINT_1] =
+            datalayer_meb->temp_points[pid_reply - PID_TEMP_POINT_1] =
                 (((data[3] << 8) | data[4]) / 8.f) - 40;
           } else if (pid_reply >= PID_CELLVOLTAGE_CELL_1 && pid_reply <= PID_CELLVOLTAGE_CELL_108) {
             // The general case for cell voltages (some specific cases handled above)
@@ -1487,15 +1487,15 @@ void MebBattery::uds_response_handler(uint8_t *data, int len, enum isotp_tatype 
       break;
     case (0x04 + kPositiveResponseOffset):  //clear DTCs (OBD service)
       uds_request_pending = false;
-      datalayer_extended.meb.dtc_read_failed = false;  // Clear the flag to indicate that the DTC readout has not failed (success or no DTCs)
-      datalayer_extended.meb.dtc_count = 0;  // Clear any existing DTCs in the datalayer before parsing new ones
-      datalayer_extended.meb.dtc_last_read_millis = 0;
+      datalayer_meb->dtc_read_failed = false;  // Clear the flag to indicate that the DTC readout has not failed (success or no DTCs)
+      datalayer_meb->dtc_count = 0;  // Clear any existing DTCs in the datalayer before parsing new ones
+      datalayer_meb->dtc_last_read_millis = 0;
       break;
     case (UDS_RESPONSE_SID_OF(ReadDTCInformation)):  //DTC read positive response
       if (data[1] != 0x02) {
-        datalayer_extended.meb.dtc_read_failed = true;  // Set the flag to indicate that the DTC readout has failed due to unexpected response format
+        datalayer_meb->dtc_read_failed = true;  // Set the flag to indicate that the DTC readout has failed due to unexpected response format
       } else {
-        datalayer_extended.meb.dtc_read_failed = false;  // Clear the flag to indicate that the DTC readout has not failed (success or no DTCs)
+        datalayer_meb->dtc_read_failed = false;  // Clear the flag to indicate that the DTC readout has not failed (success or no DTCs)
         int dtcStartIndex = 3;  // Skip 59 02 FF
         int availableBytes = len - dtcStartIndex;
         int maxDtcCount = availableBytes / 4;
@@ -1555,8 +1555,8 @@ void MebBattery::uds_response_handler(uint8_t *data, int len, enum isotp_tatype 
         datalayer_meb->dtc_count = maxDtcCount;  // Store actual count of DTCs parsed
       }
       uds_request_pending = false;
-      datalayer_extended.meb.dtc_read_in_progress = false;  // Clear the flag to indicate that the DTC readout is complete
-      datalayer_extended.meb.dtc_last_read_millis = millis(); // TODO: should store time and date.
+      datalayer_meb->dtc_read_in_progress = false;  // Clear the flag to indicate that the DTC readout is complete
+      datalayer_meb->dtc_last_read_millis = millis(); // TODO: should store time and date.
       break;
     case (ServiceNotSupportedInActiveSession): // Negative response
       // data[1] = original request service id, data[2] = NRC
@@ -1567,8 +1567,8 @@ void MebBattery::uds_response_handler(uint8_t *data, int len, enum isotp_tatype 
       } else if ( data[1] == ReadDTCInformation && len >= 3 && data[2] == RequestOutOfRange) {
         // Any other NRC: the transaction is complete (rejected), allow the next request.
         uds_request_pending = false;
-        datalayer_extended.meb.dtc_read_in_progress = false;  // Clear the flag to indicate that the DTC readout is complete
-        datalayer_extended.meb.dtc_read_failed = true;  // Set the flag to indicate that the DTC readout has failed
+        datalayer_meb->dtc_read_in_progress = false;  // Clear the flag to indicate that the DTC readout is complete
+        datalayer_meb->dtc_read_failed = true;  // Set the flag to indicate that the DTC readout has failed
       } else {
         // Any other NRC: the transaction is complete (rejected), allow the next request.
         uds_request_pending = false;
@@ -1602,31 +1602,31 @@ void MebBattery::on_isotp_can_tx(uint32_t can_id, uint8_t *can_data, uint8_t can
 void MebBattery::setup(void) {  // Performs one time setup at startup
   strncpy(datalayer.system.info.battery_protocol, Name, 63);
   datalayer.system.info.battery_protocol[63] = '\0';
-  datalayer.battery.info.number_of_cells = 108;  //Startup in 108S mode. We figure out the actual count later.
-  datalayer.battery.info.max_design_voltage_dV = MAX_PACK_VOLTAGE_108S_DV;  //Defined later to correct pack size
-  datalayer.battery.info.min_design_voltage_dV = MIN_PACK_VOLTAGE_84S_DV;   //Defined later to correct pack size
-  datalayer.battery.info.max_cell_voltage_mV = MAX_CELL_VOLTAGE_MV;
-  datalayer.battery.info.min_cell_voltage_mV = MIN_CELL_VOLTAGE_MV;
-  datalayer.battery.info.max_cell_voltage_deviation_mV = MAX_CELL_DEVIATION_MV;
+  datalayer_battery->info.number_of_cells = 108;  //Startup in 108S mode. We figure out the actual count later.
+  datalayer_battery->info.max_design_voltage_dV = MAX_PACK_VOLTAGE_108S_DV;  //Defined later to correct pack size
+  datalayer_battery->info.min_design_voltage_dV = MIN_PACK_VOLTAGE_84S_DV;   //Defined later to correct pack size
+  datalayer_battery->info.max_cell_voltage_mV = MAX_CELL_VOLTAGE_MV;
+  datalayer_battery->info.min_cell_voltage_mV = MIN_CELL_VOLTAGE_MV;
+  datalayer_battery->info.max_cell_voltage_deviation_mV = MAX_CELL_DEVIATION_MV;
   memset(cellvoltages_polled, 0, sizeof(cellvoltages_polled));
   memset(cellvoltages, 0, sizeof(cellvoltages));
-  datalayer_extended.meb.BMS_mode = BMS_TARGET_INIT; //Booting is always in init mode.
+  datalayer_meb->BMS_mode = BMS_TARGET_INIT; //Booting is always in init mode.
   HVK_01_frame.data.u8[3] = BMS_TARGET_INIT;
 
-  const uint8_t selected = std::min<uint8_t>(user_selected_meb_model, (uint8_t)2);
-  configured_model = static_cast<MebModel>(selected);
-  // Start in MEB_BMC mode for Auto, so existing packs keep working.
-  active_model = (configured_model == MebModel::Auto) ? MebModel::MEB_BMC : configured_model;
-
-  logging.printf("MEB: Model setting=%u active=%u\n", (unsigned)selected, (unsigned)active_model);
-  // MQB Evo battery is available only in one configuration.
-  if (active_model == MebModel::MQBEvo_BMC) {
-    datalayer.battery.info.number_of_cells = 96;
-    datalayer.battery.info.max_design_voltage_dV = MAX_PACK_VOLTAGE_96S_DV;
-    datalayer.battery.info.min_design_voltage_dV = MIN_PACK_VOLTAGE_96S_DV;
-    nof_cells_determined = true;
-    security_login_key = 20104; //correct key for MQB Evo
-  }
-
   isotp_init(ISO_Hybrid_01_Req_FD);
+}
+
+void MqbEvoBattery::setup(void) {  // Performs one time setup at startup
+  MebBattery::setup();             // Common MEB init (isotp, memsets, defaults).
+
+  platform = VAGPlatform::MQB_Evo;  // Drives the shared transmit/update branches.
+  // MQB Evo battery is available only in one configuration.
+  datalayer_battery->info.number_of_cells = 96;
+  datalayer_battery->info.max_design_voltage_dV = MAX_PACK_VOLTAGE_96S_DV;
+  datalayer_battery->info.min_design_voltage_dV = MIN_PACK_VOLTAGE_96S_DV;
+  nof_cells_determined = true;
+  security_login_key = 20104;  //correct key for MQB Evo
+
+  strncpy(datalayer.system.info.battery_protocol, Name, 63);  // Overwrite the MEB name.
+  datalayer.system.info.battery_protocol[63] = '\0';
 }
