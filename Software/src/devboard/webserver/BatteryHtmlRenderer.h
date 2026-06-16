@@ -13,14 +13,17 @@ class BatteryHtmlRenderer {
   // Battery renderers can pass this to get_dtc_json_loader_html() directly,
   // or supply their own URL string for a different server/fork.
   static constexpr const char* GITHUB_RAW_BASE_URL =
-      "https://raw.githubusercontent.com/dalathegreat/Battery-Emulator/main/data/";
+      "https://raw.githubusercontent.com/dalathegreat/Battery-Emulator/main/web_data/dtc/";
   // Renders a status line + optional file-picker widget + JavaScript that fills
-  // DTC descriptions into any table cell carrying a data-dtc-code='<decimal>'
-  // attribute.
+  // DTC descriptions into any table cell carrying a data-dtc-code attribute.
+  // The attribute may hold either the decimal code (matched against the JSON
+  // "code" field, e.g. data-dtc-code='41848') or the DTC string (matched against
+  // the JSON "dtc" field, e.g. data-dtc-code='P0C9500'). JSON entries may carry
+  // "code", "dtc", or both; the loader keys on whichever is present.
   //
   // base_url:  Base URL for the JSON file, e.g. GITHUB_RAW_BASE_URL.
   //             Pass "" (default) to skip the GitHub fetch.
-  // filename:  Single JSON filename under base_url, e.g. "meb_dtc_003.json"
+  // filename:  Single JSON filename under base_url, e.g. "meb_dtc.json"
   //   On a successful GitHub fetch the file picker is hidden automatically.
   //   On failure the file picker is revealed so the user can load a local copy.
   static String get_dtc_json_loader_html(const char* base_url = "", const char* filename = "") {
@@ -48,7 +51,7 @@ class BatteryHtmlRenderer {
     // Identifier map (minified -> readable):
     //   u=url  k=cacheKey  S=statusEl  C=fileContainer  I=fileInput
     //   A=applyDtcs  P=showFilePicker  F=fetchFromGitHub
-    //   a=arr b=fromCache m=map L=cells n=matched t=td/text c=code
+    //   a=arr b=fromCache m=map L=cells n=matched t=td/text e=entry d=desc-html
     //   g=cached f=file R=reader v=ev x=ex
     //
     // ORIGINAL (readable) JAVASCRIPT:
@@ -63,14 +66,20 @@ class BatteryHtmlRenderer {
 
       function applyDtcs(arr, fromCache) {
         var map = {};
-        arr.forEach(function(e){ map[e.code] = e; });
+        // Key by decimal code and/or DTC string, whichever the entry has.
+        arr.forEach(function(e){
+          if (e.code != null) map[e.code] = e;
+          if (e.dtc) map[e.dtc] = e;
+        });
         var cells = document.querySelectorAll('[data-dtc-code]');
         var matched = 0;
         cells.forEach(function(td){
-          var code = parseInt(td.getAttribute('data-dtc-code'), 10);
-          if (map[code]) {
-            td.innerHTML = map[code].l_dsc +
-              '<br /><em style=\'color:#aaa;font-size:0.85em\'>' + map[code].s_dsc + '</em>';
+          var e = map[td.getAttribute('data-dtc-code')];
+          if (e) {
+            var html = e.l_dsc;
+            if (e.s_dsc)
+              html += '<br /><em style=\'color:#aaa;font-size:0.85em\'>' + e.s_dsc + '</em>';
+            td.innerHTML = html;
             matched++;
           }
         });
@@ -150,10 +159,10 @@ class BatteryHtmlRenderer {
         "var C=document.getElementById('dtcJsonFileContainer');"
         "var I=document.getElementById('dtcJsonFile');"
         "function A(a,b){"
-        "var m={};a.forEach(function(e){m[e.code]=e;});"
+        "var m={};a.forEach(function(e){if(e.code!=null)m[e.code]=e;if(e.dtc)m[e.dtc]=e;});"
         "var L=document.querySelectorAll('[data-dtc-code]');var n=0;"
-        "L.forEach(function(t){var c=parseInt(t.getAttribute('data-dtc-code'),10);"
-        "if(m[c]){t.innerHTML=m[c].l_dsc+'<br /><em style=\\'color:#aaa;font-size:0.85em\\'>'+m[c].s_dsc+'</em>';n++;}});"
+        "L.forEach(function(t){var e=m[t.getAttribute('data-dtc-code')];"
+        "if(e){var d=e.l_dsc;if(e.s_dsc)d+='<br /><em style=\\'color:#aaa;font-size:0.85em\\'>'+e.s_dsc+'</em>';t.innerHTML=d;n++;}});"
         "S.innerHTML='Loaded '+a.length+' entries, '+n+'/'+L.length+' DTCs matched'+(b?' (cached)':' (fetched)')+"
         "'. <a href=\\'#\\' id=\\'dtcRefresh\\' style=\\'color:#aaa;font-size:0.85em;\\'>Refresh</a>';"
         "S.style.color=n>0?'#4CAF50':'#ff9800';"
