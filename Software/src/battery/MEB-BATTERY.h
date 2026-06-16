@@ -37,6 +37,8 @@ class MebBattery : public CanBattery, public IsoTp {
   void read_DTC() { datalayer_extended.meb.UserRequestDTCreadout = true; }
   bool supports_reset_crash() { return true; }
   void reset_crash() { datalayer_extended.meb.UserRequestCrashReset = true; }
+  bool supports_reset_BMS() { return true; }
+  void reset_BMS() { datalayer_meb->UserRequestBMSReset = true; }
   static constexpr const char* Name = "Volkswagen Group MEB platform via CAN-FD";
 
   BatteryHtmlRenderer& get_status_renderer() { return renderer; }
@@ -50,6 +52,8 @@ class MebBattery : public CanBattery, public IsoTp {
   void uds_response_handler(uint8_t* data, int len, enum isotp_tatype type);
   /* drive basic settings state machine — called every transmit_can() tick */
   void handle_basic_settings(unsigned long currentMillis);
+  /* drive the BMS reset state machine — called every transmit_can() tick */
+  void handle_bms_reset(unsigned long currentMillis);
   /* IsoTp overrides: send a raw CAN frame */
   void on_isotp_can_tx(uint32_t can_id, uint8_t* can_data, uint8_t can_dlc) override;
   /* IsoTp override: process an assembled ISO-TP message */
@@ -303,6 +307,21 @@ class MebBattery : public CanBattery, public IsoTp {
   uint32_t security_access_seed = 0;
   uint32_t security_login_key = 20103; // This init value is for MEB only, MQB Evo is set in setup() after determining the model.
   unsigned long basic_settings_poll_ms = 0;
+
+  // BMS reset state machine. Mimics a bench power-cycle over CAN: pause the battery and wait for the
+  // current to drop, request HV_OFF + KL15 off, go silent until the BMS sleeps, dwell, then restart.
+  enum class BmsResetState : uint8_t { IDLE, WAIT_FOR_PAUSE, REQUEST_HV_OFF, SILENCE, SLEEP_WAIT };
+  BmsResetState bms_reset_state = BmsResetState::IDLE;
+  unsigned long bms_reset_ms = 0;        // phase start timestamp
+  bool bms_reset_active = false;         // forces KL15 OFF + HV_OFF in periodic TX
+  bool bms_reset_tx_suppressed = false;  // when true, skip all periodic CAN transmits
+  bool startup_bms_checked = false;      // true once we've inspected the first BMS_20 after boot
+
+  static constexpr unsigned long BMS_RESET_PAUSE_TIMEOUT_MS = 10000;    // max wait for current to drop
+  static constexpr unsigned long BMS_RESET_HV_OFF_TIMEOUT_MS = 3000;    // max wait for HV_OFF ack
+  static constexpr unsigned long BMS_RESET_SILENCE_TIMEOUT_MS = 15000;  // max wait for BMS to sleep
+  static constexpr unsigned long BMS_RESET_BMS_SILENT_MS = 1000;        // RX gap that means "asleep"
+  static constexpr unsigned long BMS_RESET_SLEEP_MS = 5000;             // bus-quiet dwell before restart
 
   bool toggle = false;
   uint8_t counter_1000ms = 0;

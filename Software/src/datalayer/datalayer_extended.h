@@ -869,6 +869,7 @@ struct DATALAYER_INFO_MEB {
   bool UserRequestDTCreset = false;        // User requesting DTC reset via WebUI
   bool UserRequestDTCreadout = false;      // User requesting DTC readout via WebUI
   bool UserRequestCrashReset = false;      // User requesting crash reset via WebUI
+  bool UserRequestBMSReset = false;        // User requesting BMS reset via WebUI
 };
 
 struct DATALAYER_INFO_VOLVO_POLESTAR {

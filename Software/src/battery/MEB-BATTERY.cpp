@@ -5,6 +5,7 @@
 #include "../communication/can/comm_can.h"
 #include "../datalayer/datalayer.h"
 #include "../datalayer/datalayer_extended.h"  //For "More battery info" webpage
+#include "../devboard/safety/safety.h"        //For setBatteryPause() and emulator_pause_status
 #include "../devboard/utils/events.h"
 #include "../devboard/utils/logging.h"
 
@@ -714,6 +715,18 @@ void MebBattery::handle_incoming_can_frame(CAN_frame rx_frame) {
       BMS_welded_contactors_status = (rx_frame.data.u8[1] & 0x60) >> 5;
       BMS_ext_limits_active = (rx_frame.data.u8[1] & 0x80) >> 7;
       BMS_mode = (rx_frame.data.u8[2] & 0x07);
+      // On the first BMS_20 after boot, detect whether the BMS was already awake (e.g. the emulator
+      // rebooted while the BMS kept running). A freshly woken BMS always reports Init first; any
+      // other mode here means it survived our reboot with a broken message stream and likely
+      // faulted. Force a clean sleep/re-init cycle via the reset state machine so it comes back up
+      // through Init with KL_15 properly gated.
+      if (!startup_bms_checked) {
+        startup_bms_checked = true;
+        if (BMS_mode != BMS_TARGET_INIT) {
+          logging.println("MEB: BMS already awake at boot (emulator reboot) - triggering BMS reset");
+          datalayer_meb->UserRequestBMSReset = true;
+        }
+      }
       switch (BMS_mode) {
         case 1:  // HV_ACTIVE
         case 3:  // EXTERN CHARGING
@@ -756,10 +769,8 @@ void MebBattery::handle_incoming_can_frame(CAN_frame rx_frame) {
       BMS_fault_emergency_shutdown_crash = (rx_frame.data.u8[4] & 0x80) >> 7;
       if (BMS_mode != BMS_TARGET_INIT) {  // Init state, values below are invalid
         BMS_current = ((rx_frame.data.u8[4] & 0x7F) << 8) | rx_frame.data.u8[3];
-        BMS_voltage_intermediate = (((rx_frame.data.u8[6] & 0x0F) << 8) + (rx_frame.data.u8[5]));
+        BMS_voltage_intermediate = (((rx_frame.data.u8[6] & 0x0F) << 8) + (rx_frame.data.u8[5]));// 0xFFD not measurable, 0xFFE init, 0xFFF error
         BMS_voltage = ((rx_frame.data.u8[7] << 4) + ((rx_frame.data.u8[6] & 0xF0) >> 4));
-        if (BMS_voltage_intermediate > 0xFFC) // 0xFFD not measurable, 0xFFE init, 0xFFF error
-          BMS_voltage_intermediate = 2000;
       }
       break;
     case BMS_34: {
@@ -807,6 +818,12 @@ void MebBattery::transmit_can(unsigned long currentMillis) {
 
   // Drive basic settings state machine — takes priority over other UDS requests.
   handle_basic_settings(currentMillis);
+
+  // Drive the BMS reset state machine. While it holds the bus silent, skip all periodic
+  // CAN transmits so the BMS sleeps. ISO-TP polling and the UDS timeout above still run.
+  handle_bms_reset(currentMillis);
+  if (bms_reset_tx_suppressed)
+    return;
 
   if (!uds_request_pending && basic_settings_state == BasicSettingsState::IDLE && datalayer_meb->UserRequestDTCreadout) {
     uint8_t payload[3] = {0x19, 0x02, 0x09};  // UDS Read DTCs by status mask, with status mask 0x09 to read only active DTCs
@@ -907,7 +924,8 @@ void MebBattery::transmit_can(unsigned long currentMillis) {
 
     //HV request and DC/DC control lies in 0x503
 
-    if ((!datalayer.system.info.equipment_stop_active) && datalayer.battery.status.real_bms_status != BMS_FAULT &&
+    if ((!datalayer.system.info.equipment_stop_active) && !bms_reset_active &&
+        datalayer.battery.status.real_bms_status != BMS_FAULT &&
         (datalayer.battery.status.real_bms_status == BMS_ACTIVE ||
          (datalayer.battery.status.real_bms_status == BMS_STANDBY &&
           (hv_requested ||
@@ -947,7 +965,7 @@ void MebBattery::transmit_can(unsigned long currentMillis) {
       HVK_01_frame.data.u8[5] = 0x82;  // Bordnetz Active
       HVK_01_frame.data.u8[6] = 0xE0;  // Request emergency shutdown HV system == 0, false
     } else if ((first_can_msg_timestamp > 0 && currentMillis - first_can_msg_timestamp > 1000 && BMS_mode != 7) ||
-               datalayer.system.info.equipment_stop_active) {  //FAULT STATE, open contactors
+               datalayer.system.info.equipment_stop_active || bms_reset_active) {  //FAULT STATE, open contactors
 
       if (datalayer.system.status.system_status != FAULT && datalayer.battery.status.real_bms_status == BMS_STANDBY &&
           !datalayer.system.info.equipment_stop_active) {
@@ -986,7 +1004,15 @@ void MebBattery::transmit_can(unsigned long currentMillis) {
     HVLM_14_frame.data.u8[5] = DC_FASTCHARGE_NO_START_REQUEST;  //DC_FASTCHARGE_VEHICLE;  //DC charging
 
     //Klemmen status
-    Klemmen_Status_01_frame.data.u8[2] = 0x02;  //bit to signal that KL_15 is ON // Always 0 in start4.log
+    // KL_15 must stay OFF while the BMS is still doing its internal init, exactly like a real car
+    // where terminal 15 only goes live once the BMS is past init. Asserting KL_15 during init (or
+    // before the BMS has reported anything) can push it into Error (mode 5) instead of HV_OFF.
+    // Turn KL_15 ON only once the BMS is connected and has left Init mode; force it OFF during a
+    // BMS reset. This is self-correcting on both cold boot and post-reset restart, since the BMS
+    // goes back through Init each time and real_bms_status returns to DISCONNECTED on restart.
+    bool kl15_on = !bms_reset_active && BMS_mode != BMS_TARGET_INIT &&
+                   datalayer.battery.status.real_bms_status != BMS_DISCONNECTED;
+    Klemmen_Status_01_frame.data.u8[2] = kl15_on ? 0x02 : 0x00;  //bit to signal KL_15 (0x02 = ON, 0x00 = OFF)
     Klemmen_Status_01_frame.data.u8[1] = ((Klemmen_Status_01_frame.data.u8[1] & 0xF0) | counter_100ms);
     Klemmen_Status_01_frame.data.u8[0] =
         vw_crc_calc(Klemmen_Status_01_frame.data.u8, Klemmen_Status_01_frame.DLC, Klemmen_Status_01_frame.ID);
@@ -1020,7 +1046,7 @@ void MebBattery::transmit_can(unsigned long currentMillis) {
 
     transmit_can_frame(&Klima_Sensor_02_frame);
     transmit_can_frame(&MSG_HYB_30_frame);
-    transmit_can_frame(&NMH_DCDC_NV_frame);
+    //transmit_can_frame(&NMH_DCDC_NV_frame);
     transmit_can_frame(&NMH_Gateway_frame);
     transmit_can_frame(&NMH_Klima_frame);
 
@@ -1273,6 +1299,81 @@ void MebBattery::handle_basic_settings(unsigned long currentMillis) {
       break;
     }
     default:
+      break;
+  }
+}
+
+void MebBattery::handle_bms_reset(unsigned long currentMillis) {
+  switch (bms_reset_state) {
+    case BmsResetState::IDLE:
+      // Only start if no diagnostic session is in flight.
+      if (datalayer_meb->UserRequestBMSReset && basic_settings_state == BasicSettingsState::IDLE &&
+          !uds_request_pending) {
+        datalayer_meb->UserRequestBMSReset = false;
+        // Step 0: reduce power. Zero charge/discharge so the inverter winds current down.
+        // Keep CAN sending (pause_CAN = false) so we can still send a graceful HV_OFF.
+        setBatteryPause(true, false, false, false);
+        bms_reset_state = BmsResetState::WAIT_FOR_PAUSE;
+        bms_reset_ms = currentMillis;
+        logging.println("MEB: BMS reset: pausing battery, waiting for current to drop");
+      }
+      break;
+
+    case BmsResetState::WAIT_FOR_PAUSE:
+      // Wait until current has actually dropped before cutting HV (avoids arcing under load).
+      if (emulator_pause_status == PAUSED) {
+        bms_reset_active = true;  // KL15 OFF + HV_OFF asserted in periodic TX
+        bms_reset_state = BmsResetState::REQUEST_HV_OFF;
+        bms_reset_ms = currentMillis;
+        logging.println("MEB: BMS reset: current low, requesting HV_OFF / KL15 off");
+      } else if (currentMillis - bms_reset_ms > BMS_RESET_PAUSE_TIMEOUT_MS) {
+        // Inverter never honoured the 0-power request; abort instead of cutting HV under load.
+        setBatteryPause(false, false, false, false);
+        bms_reset_state = BmsResetState::IDLE;
+        logging.println("MEB: BMS reset: aborting, battery still under load");
+      }
+      break;
+
+    case BmsResetState::REQUEST_HV_OFF:
+      // Keep transmitting HV_OFF until the BMS reports HV off, or timeout.
+      if (BMS_mode == BMS_TARGET_HV_OFF || currentMillis - bms_reset_ms > BMS_RESET_HV_OFF_TIMEOUT_MS) {
+        bms_reset_tx_suppressed = true;  // go silent so the BMS sleeps
+        bms_reset_state = BmsResetState::SILENCE;
+        bms_reset_ms = currentMillis;
+        logging.println("MEB: BMS reset: bus silent, waiting for BMS to sleep");
+      }
+      break;
+
+    case BmsResetState::SILENCE:
+      // BMS considered asleep once it stops sending for BMS_RESET_BMS_SILENT_MS.
+      if (currentMillis - last_can_msg_timestamp > BMS_RESET_BMS_SILENT_MS ||
+          currentMillis - bms_reset_ms > BMS_RESET_SILENCE_TIMEOUT_MS) {
+        bms_reset_state = BmsResetState::SLEEP_WAIT;
+        bms_reset_ms = currentMillis;
+        logging.println("MEB: BMS reset: BMS asleep, holding bus quiet");
+      }
+      break;
+
+    case BmsResetState::SLEEP_WAIT:
+      if (currentMillis - bms_reset_ms >= BMS_RESET_SLEEP_MS) {
+        // Restart CAN from a clean state so precharge/init runs again.
+        bms_reset_tx_suppressed = false;
+        bms_reset_active = false;
+        first_can_msg_timestamp = 0;
+        last_can_msg_timestamp = currentMillis;  // avoid instant "disconnected"
+        can_msg_received = RX_DEFAULT;
+        BMS_voltage_intermediate = 2000;
+        datalayer_meb->BMS_voltage_intermediate_dV = 0;
+        hv_requested = false;
+        // Clearing the fault is the whole point of the reset: BMS_FAULT is latched (every BMS_20
+        // branch is guarded with "!= BMS_FAULT"), so drop it here and let the live BMS_mode
+        // repopulate real_bms_status once messages resume.
+        datalayer.battery.status.real_bms_status = BMS_DISCONNECTED;
+        // Step 6: resume charge/discharge.
+        setBatteryPause(false, false, false, false);
+        bms_reset_state = BmsResetState::IDLE;
+        logging.println("MEB: BMS reset: resuming CAN communication");
+      }
       break;
   }
 }
