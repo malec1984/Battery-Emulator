@@ -28,8 +28,8 @@ class WavesharePoE8ChHal : public Esp32Hal {
   // chatter sent down the RS485 bus when the chip starts up. Hopefully this
   // won't matter (it'll be 115200 baud, so much higher than the normal Modbus
   // 9600 baud) - if it's a problem we can burn fuses to disable it.
-  virtual gpio_num_t RS485_TX_PIN() { return GPIO_NUM_43; }
-  virtual gpio_num_t RS485_RX_PIN() { return GPIO_NUM_44; }
+  virtual gpio_num_t RS485_TX_PIN() { return GPIO_NUM_17; }
+  virtual gpio_num_t RS485_RX_PIN() { return GPIO_NUM_18; }
 
   // CANFD_ADDON defines for MCP2517
   virtual gpio_num_t MCP2517_SCK() { return GPIO_NUM_48; }
@@ -70,7 +70,7 @@ class WavesharePoE8ChHal : public Esp32Hal {
       // WUP1 on top port
       return GPIO_NUM_1;
     }
-    return GPIO_NUM_18;
+    return GPIO_NUM_13;
   }
   virtual gpio_num_t WUP_PIN2() {
     if (user_selected_gpioopt1 == GPIOOPT1::DEFAULT_OPT) {

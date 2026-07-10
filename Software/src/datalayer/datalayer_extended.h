@@ -839,6 +839,12 @@ struct DATALAYER_INFO_MEB {
   uint8_t balancing_active = 0;
   uint8_t BMS_welded_contactors_status = 0;
 
+  /** DCDC converter reported state (from DCDC_01/04). 0=Standby, 1=HV_On_Vorladen, 2=Tiefsetzen, 3=Hochsetzen, 7=Init */
+  uint8_t DCDC_mode = 0;
+  bool DCDC_precharge_complete = 0; /** DC_Vorladung_Status: true once DCDC precharge is complete */
+  int32_t DCDC_HV_voltage_dV = 0;
+  int16_t DCDC_HV_current_dA = 0;
+
   bool balancing_request = 0;
   bool charging_active = 0;
   bool BMS_OBD_MIL = 0; /** true if BMS requests error/warning light */
