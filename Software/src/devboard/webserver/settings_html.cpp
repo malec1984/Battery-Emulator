@@ -584,6 +584,10 @@ String raw_settings_processor(const String& var, BatteryEmulatorSettingsStore& s
     return settings.getBool("MQTTENABLED") ? "checked" : "";
   }
 
+  if (var == "DOIPENABLED") {
+    return settings.getBool("DOIPENABLED") ? "checked" : "";
+  }
+
   if (var == "MQTTSERVER") {
     return settings.getString("MQTTSERVER");
   }
@@ -1810,6 +1814,9 @@ const char* getCANInterfaceName(CAN_Interface interface) {
 
         <label>Enable MQTT: </label>
         <input type='checkbox' name='MQTTENABLED' value='on' %MQTTENABLED% />
+
+        <label>Enable DoIP gateway: </label>
+        <input type='checkbox' name='DOIPENABLED' value='on' %DOIPENABLED% />
 
         <div class='if-mqtt'>
         <label>MQTT server: </label>

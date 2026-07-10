@@ -11,6 +11,7 @@
 #include "src/communication/Transmitter.h"
 #include "src/communication/can/comm_can.h"
 #include "src/communication/contactorcontrol/comm_contactorcontrol.h"
+#include "src/communication/doip/comm_doip.h"
 #include "src/communication/equipmentstopbutton/comm_equipmentstopbutton.h"
 #include "src/communication/nvm/comm_nvm.h"
 #include "src/communication/precharge_control/precharge_control.h"
@@ -88,6 +89,10 @@ void connectivity_loop(void*) {
   init_WiFi();
 
   init_webserver();
+
+  if (doip_enabled) {
+    init_doip();
+  }
 
   if (mdns_enabled) {
     init_mDNS();
@@ -523,6 +528,12 @@ void core_loop(void*) {
       for (auto& transmitter : transmitters) {
         transmitter->transmit(currentMillis);
       }
+    }
+
+    // Bridge queued DoIP tester traffic to/from the battery's ISO-TP channel.
+    // Kept on this task so all ISO-TP access stays single-threaded.
+    if (doip_enabled) {
+      doip_bridge_pump();
     }
 
     if (datalayer.system.info.performance_measurement_active) {

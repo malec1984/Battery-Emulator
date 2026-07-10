@@ -39,6 +39,24 @@ class MebBattery : public CanBattery, public IsoTp {
   void reset_crash() { datalayer_extended.meb.UserRequestCrashReset = true; }
   bool supports_reset_BMS() { return true; }
   void reset_BMS() { datalayer_meb->UserRequestBMSReset = true; }
+
+  // UDS diagnostic gateway (DoIP bridge). Reuses the inherited IsoTp instance.
+  // DoIP logical addresses for the MEB platform (see uds_gateway_*_address()).
+  static const uint16_t DOIP_ENTITY_ADDR = 0x3828;  // gateway we impersonate
+  static const uint16_t DOIP_TESTER_ADDR = 0x0E80;  // accepted tester source address
+  static const uint16_t DOIP_FUNC_ADDR = 0xE400;    // functional group address
+  bool supports_uds_gateway() override { return true; }
+  bool uds_gateway_acquire() override;
+  void uds_gateway_release() override { uds_gateway_active = false; }
+  bool uds_gateway_send(const uint8_t* data, int len) override;
+  bool uds_gateway_send_oneshot(const uint8_t* data, int len, bool functional) override;
+  void uds_gateway_set_sink(UdsResponseSink sink) override { uds_gateway_sink = sink; }
+  uint16_t uds_gateway_entity_address() override { return DOIP_ENTITY_ADDR; }
+  uint16_t uds_gateway_tester_address() override { return DOIP_TESTER_ADDR; }
+  // Target = ECU address, already encoded in the low byte of the diag CAN IDs.
+  uint16_t uds_gateway_target_address() override { return (ISO_Hybrid_01_Req_FD & 0xFF) | 0x3000; }
+  uint16_t uds_gateway_functional_address() override { return DOIP_FUNC_ADDR; }
+
   static constexpr const char* Name = "Volkswagen Group MEB platform via CAN-FD";
 
   BatteryHtmlRenderer& get_status_renderer() { return renderer; }
@@ -293,6 +311,13 @@ class MebBattery : public CanBattery, public IsoTp {
   static constexpr unsigned long BASIC_SETTINGS_POLL_INTERVAL_MS = 500;  // How often to poll routine result
   bool uds_request_pending = false;           // True while waiting for a UDS response
   unsigned long uds_request_timestamp = 0;    // millis() when the last UDS request was sent
+
+  // DoIP gateway state. When a tester holds the channel, internal UDS jobs (PID
+  // poll, DTC, basic settings, BMS reset) are suspended and responses route to
+  // the sink instead of uds_response_handler().
+  bool uds_gateway_active = false;   // a DoIP tester holds the channel exclusively
+  bool uds_gateway_txn = false;      // a DoIP-owned tracked transaction is in flight
+  UdsResponseSink uds_gateway_sink;  // response sink registered by the DoIP bridge
 
   // Crash reset state machine
   enum class BasicSettingsState : uint8_t {

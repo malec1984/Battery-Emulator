@@ -8,6 +8,7 @@
 #include "../../devboard/wifi/wifi.h"
 #include "../../inverter/INVERTERS.h"
 #include "../contactorcontrol/comm_contactorcontrol.h"
+#include "../doip/comm_doip.h"
 #include "../equipmentstopbutton/comm_equipmentstopbutton.h"
 #include "../precharge_control/precharge_control.h"
 
@@ -191,6 +192,7 @@ void init_stored_settings() {
   passwordAP = settings.getString("APPASSWORD", "123456789").c_str();
   espnow_enabled = settings.getBool("ESPNOWENABLED", false);
   mqtt_enabled = settings.getBool("MQTTENABLED", false);
+  doip_enabled = settings.getBool("DOIPENABLED", false);
   mqtt_timeout_ms = settings.getUInt("MQTTTIMEOUT", 2000);
   mqtt_publish_interval_ms = settings.getUInt("MQTTPUBLISHMS", 5000);
   ha_autodiscovery_enabled = settings.getBool("HADISC", false);

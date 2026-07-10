@@ -1,6 +1,7 @@
 #ifndef BATTERY_H
 #define BATTERY_H
 
+#include <functional>
 #include <vector>
 #include "../../src/devboard/utils/types.h"
 #include "../../src/devboard/webserver/BatteryHtmlRenderer.h"
@@ -139,6 +140,32 @@ class Battery {
 
   // Battery reports total_charged_battery_Wh and total_discharged_battery_Wh
   virtual bool supports_charged_energy() { return false; }
+
+  // --- UDS diagnostic gateway (DoIP bridge) --------------------------------
+  // Optional interface a battery implements when it exposes an ISO-TP diagnostic
+  // channel that a DoIP tester can tunnel UDS over. All methods below are called
+  // only on the CAN/core task (the ISO-TP state machine is not thread-safe).
+
+  // Sink invoked with an assembled UDS response, on the CAN/core task.
+  using UdsResponseSink = std::function<void(const uint8_t* data, int len)>;
+
+  virtual bool supports_uds_gateway() { return false; }
+  // Acquire/release exclusive use of the channel (suspends internal UDS jobs).
+  // acquire() returns false if the channel is busy with an internal job.
+  virtual bool uds_gateway_acquire() { return false; }
+  virtual void uds_gateway_release() {}
+  // Physically-addressed request; response expected and tracked. false if busy.
+  virtual bool uds_gateway_send(const uint8_t* data, int len) { return false; }
+  // Fire-and-forget single frame: functional addressing and/or a suppressed
+  // positive response (e.g. TesterPresent 3E 80). len <= 7. Must not touch the
+  // ISO-TP state machine, so it is safe while a tracked transaction is pending.
+  virtual bool uds_gateway_send_oneshot(const uint8_t* data, int len, bool functional) { return false; }
+  virtual void uds_gateway_set_sink(UdsResponseSink sink) {}
+  // DoIP logical addresses — protocol constants of the emulated platform.
+  virtual uint16_t uds_gateway_entity_address() { return 0; }      // this gateway
+  virtual uint16_t uds_gateway_tester_address() { return 0; }      // accepted SA
+  virtual uint16_t uds_gateway_target_address() { return 0; }      // the ECU
+  virtual uint16_t uds_gateway_functional_address() { return 0; }  // functional group
 
   virtual BatteryHtmlRenderer& get_status_renderer() { return defaultRenderer; }
 

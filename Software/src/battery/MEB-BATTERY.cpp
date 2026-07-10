@@ -843,22 +843,29 @@ void MebBattery::transmit_can(unsigned long currentMillis) {
   // If no UDS response arrived within the timeout window, allow the next request.
   if (uds_request_pending && (currentMillis - uds_request_timestamp > UDS_REQUEST_TIMEOUT_MS)) {
     uds_request_pending = false;
+    uds_gateway_txn = false;  // release a dead DoIP transaction back to the bridge
     if (basic_settings_state != BasicSettingsState::IDLE) {
       logging.println("MEB: BasicSettings: UDS timeout, aborting");
       basic_settings_state = BasicSettingsState::IDLE;
     }
   }
 
-  // Drive basic settings state machine — takes priority over other UDS requests.
-  handle_basic_settings(currentMillis);
+  // While a DoIP tester holds the diagnostic channel, suspend all internal UDS
+  // jobs (basic settings, BMS reset, DTC, PID poll). ISO-TP polling and the UDS
+  // timeout above still run so the forwarded transactions complete.
+  if (!uds_gateway_active) {
+    // Drive basic settings state machine — takes priority over other UDS requests.
+    handle_basic_settings(currentMillis);
 
-  // Drive the BMS reset state machine. While it holds the bus silent, skip all periodic
-  // CAN transmits so the BMS sleeps. ISO-TP polling and the UDS timeout above still run.
-  handle_bms_reset(currentMillis);
-  if (bms_reset_tx_suppressed)
-    return;
+    // Drive the BMS reset state machine. While it holds the bus silent, skip all periodic
+    // CAN transmits so the BMS sleeps. ISO-TP polling and the UDS timeout above still run.
+    handle_bms_reset(currentMillis);
+    if (bms_reset_tx_suppressed)
+      return;
+  }
 
-  if (!uds_request_pending && basic_settings_state == BasicSettingsState::IDLE && datalayer_meb->UserRequestDTCreadout) {
+  if (!uds_gateway_active && !uds_request_pending && basic_settings_state == BasicSettingsState::IDLE &&
+      datalayer_meb->UserRequestDTCreadout) {
     uint8_t payload[3] = {0x19, 0x02, 0x09};  // UDS Read DTCs by status mask, with status mask 0x09 to read only active DTCs
     isotp_send(payload, sizeof(payload));
     uds_request_pending = true;
@@ -868,7 +875,8 @@ void MebBattery::transmit_can(unsigned long currentMillis) {
     datalayer_meb->dtc_read_failed = false;  // Reset the DTC read failed flag at the start of a new readout
   }
 
-  if (!uds_request_pending && basic_settings_state == BasicSettingsState::IDLE && datalayer_meb->UserRequestDTCreset) {
+  if (!uds_gateway_active && !uds_request_pending && basic_settings_state == BasicSettingsState::IDLE &&
+      datalayer_meb->UserRequestDTCreset) {
     transmit_can_frame(&OBD_CLEAR_DTC);
     uds_request_pending = true;
     uds_request_timestamp = currentMillis;
@@ -1123,7 +1131,8 @@ void MebBattery::transmit_can(unsigned long currentMillis) {
         break;
     }
     // send request only if we have CAN bus activity for at least 1 second and there is no pending UDS request.
-    if (first_can_msg_timestamp > 0 && currentMillis - first_can_msg_timestamp > 1000 && !uds_request_pending) {
+    if (!uds_gateway_active && first_can_msg_timestamp > 0 && currentMillis - first_can_msg_timestamp > 1000 &&
+        !uds_request_pending) {
       uds_read_data_by_id(current_pid, currentMillis);
     } else {
       // if we could not send the request, don't advance to the next PID. This doesn't cover the case when there is a UDS repsonse timeout.
@@ -1784,7 +1793,63 @@ void MebBattery::uds_response_handler(uint8_t *data, int len, enum isotp_tatype 
 }
 
 void MebBattery::on_isotp_rx_complete(uint8_t* data, int len, isotp_tatype tatype) {
+  if (uds_gateway_txn) {
+    // Response to a DoIP-forwarded request: hand it back to the tester.
+    uds_gateway_txn = false;
+    uds_request_pending = false;
+    if (uds_gateway_sink) {
+      uds_gateway_sink(data, len);
+    }
+    return;
+  }
+  if (uds_gateway_active) {
+    // A tester holds the channel; forward any stray/late response and keep the
+    // internal parser out of it (it would misinterpret the tester's traffic).
+    if (uds_gateway_sink) {
+      uds_gateway_sink(data, len);
+    }
+    return;
+  }
   uds_response_handler(data, len, tatype);
+}
+
+bool MebBattery::uds_gateway_acquire() {
+  // Only grant exclusive control when no internal diagnostic job is in flight.
+  if (uds_request_pending || basic_settings_state != BasicSettingsState::IDLE ||
+      bms_reset_state != BmsResetState::IDLE) {
+    return false;
+  }
+  uds_gateway_active = true;
+  return true;
+}
+
+bool MebBattery::uds_gateway_send(const uint8_t* data, int len) {
+  if (!uds_gateway_active || uds_request_pending) {
+    return false;
+  }
+  isotp_send(const_cast<uint8_t*>(data), len);
+  uds_request_pending = true;
+  uds_gateway_txn = true;
+  uds_request_timestamp = millis();
+  return true;
+}
+
+bool MebBattery::uds_gateway_send_oneshot(const uint8_t* data, int len, bool functional) {
+  if (len < 0 || len > 7) {
+    return false;  // single frame only
+  }
+  // Hand-built ISO-TP single frame, bypassing the shared IsoTp instance so a
+  // functional/SPR frame never disturbs an in-flight physical transaction.
+  CAN_frame frame;
+  frame.FD = true;
+  frame.ext_ID = true;
+  frame.DLC = 8;
+  frame.ID = functional ? ISO_Functional_Req_FD : ISO_Hybrid_01_Req_FD;
+  frame.data.u8[0] = (uint8_t)len;  // N_PCI_SF (0x00) | length
+  memcpy(&frame.data.u8[1], data, len);
+  memset(&frame.data.u8[1 + len], 0x55, 8 - 1 - len);
+  transmit_can_frame(&frame);
+  return true;
 }
 
 void MebBattery::on_isotp_can_tx(uint32_t can_id, uint8_t *can_data, uint8_t can_dlc) {
