@@ -1030,8 +1030,13 @@ void MebBattery::transmit_can(unsigned long currentMillis) {
     transmit_can_frame(&Klima_Sensor_02_frame);
     transmit_can_frame(&MSG_HYB_30_frame);
     //transmit_can_frame(&NMH_DCDC_NV_frame);
-    transmit_can_frame(&NMH_Gateway_frame);
     transmit_can_frame(&NMH_Klima_frame);
+    if (Klemmen_Status_01_frame.data.u8[2] & 0x02) {
+      NMH_Gateway_frame.data.u64 = 0x00B0F71951045000;
+    } else {
+      NMH_Gateway_frame.data.u64 = 0x0000020100045000;
+    }
+    transmit_can_frame(&NMH_Gateway_frame);
 
     // Snapshot the PID to send, then advance poll_pid to the next in sequence.
     uint16_t current_pid = poll_pid;

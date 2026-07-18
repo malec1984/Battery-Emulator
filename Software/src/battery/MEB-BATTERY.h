@@ -665,11 +665,11 @@ class MebBattery : public CanBattery, public IsoTp {
                                                 .DLC = 8,
                                                 .ID = NMH_Klima,  // Klima
                                                 .data = {0x00, 0x40, 0x08, 0x01, 0x00, 0x00, 0x00, 0x00}};
-  static constexpr CAN_frame NMH_Gateway_frame = {.FD = false,  // Not FD
-                                                  .ext_ID = true,
-                                                  .DLC = 8,
-                                                  .ID = NMH_Gateway,  // Gateway
-                                                  .data = {0x00, 0x50, 0x08, 0x50, 0x01, 0xFF, 0x30, 0x00}};
+  CAN_frame NMH_Gateway_frame = {.FD = false,  // Not FD
+                                 .ext_ID = true,
+                                 .DLC = 8,
+                                 .ID = NMH_Gateway,  // Gateway
+                                 .data = {0x00, 0x50, 0x04, 0x51, 0x19, 0xF7, 0xB0, 0x00}};
   static constexpr CAN_frame NMH_DCDC_NV_frame = {.FD = false,  // Not FD
                                                   .ext_ID = true,
                                                   .DLC = 8,
