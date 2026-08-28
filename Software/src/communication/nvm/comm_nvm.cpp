@@ -135,6 +135,12 @@ void init_stored_settings() {
   user_selected_inverter_offgrid = settings.getBool("INVOFFGRID", false);
   user_selected_inverter_long_CAN_timeout = settings.getBool("SLOWCANINV", false);
   user_selected_LEAF_interlock_mandatory = settings.getBool("INTERLOCKREQ", false);
+  user_selected_VW_iso_measurement = settings.getBool("VWISOMEAS", false);
+  user_selected_VW_dcdc_converter = settings.getBool("VWDCDC", false);
+  // Clamped here as well as in the web form, so a stored out-of-range value can never underflow the
+  // NVEM_10 encoding (raw = (mV - 10600) / 25).
+  temp = settings.getUInt("VWDCDCV", 13300);
+  user_selected_VW_dcdc_lv_setpoint_mV = (temp < 10600) ? 10600 : ((temp > 14500) ? 14500 : temp);
   user_selected_daly_power_per_percent = settings.getUInt("DALYPWRPCT", 50);
   user_selected_daly_power_per_dV = settings.getUInt("DALYPWRDV", 50);
   user_selected_daly_power_per_dV_start = settings.getUInt("DALYDVSTART", 20);
